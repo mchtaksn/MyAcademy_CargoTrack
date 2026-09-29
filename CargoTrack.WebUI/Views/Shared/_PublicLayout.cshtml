@@ -1,0 +1,147 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using CargoTrack.Entity.Entities
+@inject UserManager<AppUser> UserManager
+@{
+    AppUser? currentUser = User.Identity?.IsAuthenticated == true ? await UserManager.GetUserAsync(User) : null;
+    var roleLabel = User.IsInRole("Admin") ? "Yönetici" : User.IsInRole("Manager") ? "Şube Müdürü" : "Müşteri";
+    var action = ViewContext.RouteData.Values["action"]?.ToString();
+    var controller = ViewContext.RouteData.Values["controller"]?.ToString();
+    var isTrackActive = controller == "Cargo" && (action == "Track" || action == "TrackResult");
+    var isMyCargoActive = controller == "Cargo" && (action == "Index" || action == "Detail");
+    var initials = currentUser is null ? "" : $"{currentUser.FirstName?[..1]}{currentUser.LastName?[..1]}".ToUpper();
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - CargoTrack</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { ink: "#0B141F", inkSoft: "#111C2B", paper: "#F3F5F1", amber: "#E8A93B", teal: "#2A8577", rust: "#C1523B" },
+                    fontFamily: {
+                        display: ["Space Grotesk", "system-ui", "sans-serif"],
+                        body: ["Inter", "system-ui", "sans-serif"],
+                        mono: ["IBM Plex Mono", "ui-monospace", "monospace"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html { background: #0B141F; }
+        body { background: #F3F5F1; font-family: 'Inter', system-ui, sans-serif; color: #0B141F; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+
+        .blueprint { background-image: radial-gradient(rgba(232,169,59,.13) 1px, transparent 1px); background-size: 26px 26px; }
+        .glow { position: absolute; border-radius: 9999px; filter: blur(80px); pointer-events: none; }
+        .hazard { height: 8px; background: repeating-linear-gradient(135deg, #0B141F 0 16px, #E8A93B 16px 32px); }
+
+        .stamp { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid currentColor; padding: 5px 12px 5px 10px;
+                 border-radius: 999px; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 12.5px; }
+
+        .rise { animation: rise .7s cubic-bezier(.2,.8,.2,1) both; }
+        @@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+
+        .bar-fill { transform-origin: left; animation: fill 1.3s cubic-bezier(.2,.8,.2,1) .5s both; }
+        @@keyframes fill { from { transform: scaleX(0); } }
+
+        .bob { animation: bob .5s ease-in-out infinite alternate; }
+        @@keyframes bob { from { transform: translateY(0) rotate(-2deg); } to { transform: translateY(-2px) rotate(2deg); } }
+
+        .word-in span { display: inline-block; opacity: 0; transform: translateY(14px); animation: wordIn .6s cubic-bezier(.2,.8,.2,1) forwards; }
+        @@keyframes wordIn { to { opacity: 1; transform: translateY(0); } }
+
+        .hero-fade { opacity: 0; transform: translateY(16px); animation: fadeUp .8s ease forwards; }
+        @@keyframes fadeUp { to { opacity: 1; transform: translateY(0); } }
+
+        .pulse-dot::after { content: ""; position: absolute; inset: -8px; border-radius: 9999px; border: 2px solid currentColor; opacity: .6; animation: pulse 2s ease-out infinite; }
+        @@keyframes pulse { 0% { transform: scale(.6); opacity: .7; } 100% { transform: scale(1.8); opacity: 0; } }
+
+        .focus-ring:focus-visible { outline: 2px solid #E8A93B; outline-offset: 2px; }
+        ::selection { background: #E8A93B; color: #0B141F; }
+
+        @@media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation: none !important; transition: none !important; }
+            .word-in span, .hero-fade { opacity: 1; transform: none; }
+        }
+
+        @@media print {
+            header, footer { display: none !important; }
+        }
+    </style>
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+
+    <header class="relative z-20 bg-ink text-paper border-b border-paper/10">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-6">
+            <a href="@Url.Action("Track", "Cargo")" class="flex items-center gap-2.5 word-in focus-ring rounded">
+                <span class="material-symbols-outlined text-2xl text-amber" style="animation-delay:.05s">local_shipping</span>
+                <span class="font-display font-bold text-xl tracking-tight">
+                    <span style="animation-delay:.08s">Cargo</span><span style="animation-delay:.16s" class="text-amber">Track</span>
+                </span>
+            </a>
+
+            <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-paper/60">
+                <a href="@Url.Action("Track", "Cargo")" class="@(isTrackActive ? "text-paper" : "hover:text-amber") transition-colors">Kargo Takip</a>
+                @if (currentUser is not null && !User.IsInRole("Admin"))
+                {
+                    <a href="@Url.Action("Index", "Cargo")" class="@(isMyCargoActive ? "text-paper" : "hover:text-amber") transition-colors">Kargolarım</a>
+                }
+                <a href="#" class="hover:text-amber transition-colors">Şubelerimiz</a>
+            </nav>
+
+            @if (currentUser is not null)
+            {
+                <div class="flex items-center gap-3">
+                    <div class="hidden sm:block text-right leading-tight">
+                        <p class="text-sm font-medium">@currentUser.FirstName @currentUser.LastName</p>
+                        <p class="text-xs text-paper/45">@roleLabel</p>
+                    </div>
+                    <div class="w-9 h-9 rounded-full bg-amber text-ink font-display font-bold text-sm flex items-center justify-center">@initials</div>
+                    <form asp-action="Logout" asp-controller="Account" method="post">
+                        @Html.AntiForgeryToken()
+                        <button type="submit" title="Çıkış yap"
+                                class="focus-ring w-9 h-9 rounded-full border border-paper/15 text-paper/60 hover:text-rust hover:border-rust/50 transition-colors flex items-center justify-center">
+                            <span class="material-symbols-outlined text-lg">logout</span>
+                        </button>
+                    </form>
+                </div>
+            }
+            else
+            {
+                <a href="@Url.Action("Login", "Account")"
+                   class="focus-ring flex items-center gap-2 border border-paper/20 rounded-lg px-4 py-2 text-sm font-medium text-paper/80 hover:text-amber hover:border-amber/50 transition-colors">
+                    <span class="material-symbols-outlined text-lg">person</span>
+                    Giriş Yap
+                </a>
+            }
+        </div>
+    </header>
+
+    <main>
+        @RenderBody()
+    </main>
+
+    <footer class="bg-ink text-paper/60">
+        <div class="max-w-6xl mx-auto px-6 py-8 flex flex-col md:flex-row justify-between items-center gap-4 text-sm">
+            <span class="font-display font-semibold text-paper">CargoTrack Lojistik A.Ş.</span>
+            <div class="flex gap-6">
+                <a href="#" class="hover:text-amber transition-colors">Gizlilik Politikası</a>
+                <a href="#" class="hover:text-amber transition-colors">KVKK</a>
+                <a href="#" class="hover:text-amber transition-colors">SSS</a>
+            </div>
+        </div>
+    </footer>
+
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

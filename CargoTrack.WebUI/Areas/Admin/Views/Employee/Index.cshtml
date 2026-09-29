@@ -1,0 +1,141 @@
+﻿@model List<CargoTrack.Dto.Dtos.EmployeeDtos.ResultEmployeeDto>
+@{
+    ViewData["Title"] = "Personel";
+    Layout = "_AdminLayout";
+    var activeCount = Model.Count(e => e.IsActive);
+    var branchCount = Model.Select(e => e.BranchId).Distinct().Count();
+}
+
+@if (TempData["SuccessMessage"] is not null)
+{
+    <div class="bg-success text-white px-5 py-3 rounded-xl mb-6 text-sm font-medium flex items-center gap-2">
+        <span class="material-symbols-outlined text-lg">check_circle</span>
+        @TempData["SuccessMessage"]
+    </div>
+}
+@if (TempData["ErrorMessage"] is not null)
+{
+    <div class="bg-error text-white px-5 py-3 rounded-xl mb-6 text-sm font-medium flex items-center gap-2">
+        <span class="material-symbols-outlined text-lg">error</span>
+        @TempData["ErrorMessage"]
+    </div>
+}
+
+<div class="flex items-center justify-between mb-6">
+    <div class="flex gap-4">
+        <div class="bg-white rounded-2xl border border-outline-variant px-5 py-3 flex items-center gap-3">
+            <span class="w-9 h-9 rounded-lg bg-primary-container/10 flex items-center justify-center">
+                <span class="material-symbols-outlined text-primary-container text-lg">groups</span>
+            </span>
+            <div>
+                <p class="font-display font-bold text-lg leading-none">@Model.Count</p>
+                <p class="text-xs text-on-surface-variant mt-0.5">Toplam Personel</p>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-outline-variant px-5 py-3 flex items-center gap-3">
+            <span class="w-9 h-9 rounded-lg bg-success-container flex items-center justify-center">
+                <span class="material-symbols-outlined text-success text-lg">check_circle</span>
+            </span>
+            <div>
+                <p class="font-display font-bold text-lg leading-none">@activeCount</p>
+                <p class="text-xs text-on-surface-variant mt-0.5">Aktif</p>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-outline-variant px-5 py-3 flex items-center gap-3">
+            <span class="w-9 h-9 rounded-lg bg-secondary-container/10 flex items-center justify-center">
+                <span class="material-symbols-outlined text-secondary text-lg">storefront</span>
+            </span>
+            <div>
+                <p class="font-display font-bold text-lg leading-none">@branchCount</p>
+                <p class="text-xs text-on-surface-variant mt-0.5">Şube</p>
+            </div>
+        </div>
+    </div>
+
+    <a href="@Url.Action("Create")" class="flex items-center gap-2 bg-primary-container text-white px-5 py-3 rounded-xl font-bold text-sm hover:bg-primary-container-light transition-colors">
+        <span class="material-symbols-outlined text-lg">person_add</span>
+        Yeni Personel Ekle
+    </a>
+</div>
+
+<div class="bg-white rounded-2xl border border-outline-variant overflow-hidden">
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b-2 border-primary-container/10">
+                <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">Ad Soyad</th>
+                <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">E-posta</th>
+                <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">Pozisyon</th>
+                <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">Şube</th>
+                <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">Durum</th>
+                <th class="px-6 py-4"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-outline-variant/70">
+            @foreach (var emp in Model.OrderBy(e => e.FullName))
+            {
+                <tr class="hover:bg-surface-container-low transition-colors">
+                    <td class="px-6 py-3.5">
+                        <div class="flex items-center gap-3">
+                            <span class="avatar w-9 h-9 text-xs bg-primary-container text-white">@emp.FullName.Split(' ').Select(p => p[..1]).Aggregate("", (a, b) => a + b).ToUpper()</span>
+                            <span class="font-semibold text-on-background">@emp.FullName</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-3.5 text-on-surface-variant">@emp.Email</td>
+                    <td class="px-6 py-3.5 text-on-surface-variant">@emp.Position</td>
+                    <td class="px-6 py-3.5 text-on-surface-variant">@emp.CityName — @emp.BranchName</td>
+                    <td class="px-6 py-3.5">
+                        @if (emp.IsActive)
+                        {
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-success-container text-success">
+                                <span class="material-symbols-outlined text-sm">check_circle</span>Aktif
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-surface-container text-on-surface-variant">
+                                <span class="material-symbols-outlined text-sm">pause_circle</span>Pasif
+                            </span>
+                        }
+                    </td>
+                    <td class="px-6 py-3.5">
+                        <div class="flex items-center gap-1.5 justify-end">
+                            <a href="@Url.Action("Update", new { id = emp.Id })" title="Düzenle"
+                                   class="w-9 h-9 rounded-lg bg-surface-container hover:bg-secondary-container hover:text-white flex items-center justify-center transition-colors">
+                                <span class="material-symbols-outlined text-lg">edit</span>
+                            </a>
+                            <form asp-action="Delete" asp-route-id="@emp.Id" method="post"
+                                  onsubmit="return confirm('&quot;@emp.FullName&quot; personelini silmek istediğinize emin misiniz?');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" title="Sil"
+                                        class="w-9 h-9 rounded-lg bg-surface-container hover:bg-error hover:text-white flex items-center justify-center transition-colors">
+                                    <span class="material-symbols-outlined text-lg">delete</span>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (!Model.Any())
+    {
+        <div class="text-center py-16">
+            <span class="material-symbols-outlined text-outline-variant" style="font-size:44px">groups</span>
+            <p class="font-bold text-on-background mt-3">Henüz personel eklenmemiş</p>
+        </div>
+    }
+</div>
+
+@section Styles {
+    <style>
+        .avatar {
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+    </style>
+}

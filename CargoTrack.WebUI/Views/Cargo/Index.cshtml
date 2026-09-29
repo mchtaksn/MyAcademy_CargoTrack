@@ -1,0 +1,285 @@
+﻿@model List<CargoTrack.Dto.Dtos.CargoDtos.ResultCargoDto>
+@using System.Globalization
+@using CargoTrack.WebUI.Extensions
+@using CargoTrack.Entity.Entities.Enums
+@{
+    var isManager = User.IsInRole("Manager");
+    ViewData["Title"] = isManager ? "Şube Kargoları" : "Kargolarım";
+    Layout = "_PublicLayout";
+
+    string firstName = ViewBag.FirstName ?? "";
+    string? branchName = ViewBag.BranchName;
+
+    var total = Model.Count;
+    var transit = Model.Count(c => c.CargoStatus.ToFilterGroup() == "transit");
+    var delivered = Model.Count(c => c.CargoStatus.ToFilterGroup() == "delivered");
+    var problem = Model.Count(c => c.CargoStatus.ToFilterGroup() == "problem");
+    var outForDelivery = Model.Count(c => c.CargoStatus == CargoStatus.OutForDelivery);
+
+    int Pct(int x) => total == 0 ? 0 : (int)Math.Round(x * 100.0 / total);
+
+    var stats = new[]
+    {
+        (Label: "Toplam gönderi", Count: total,     Icon: "inventory_2",    Chip: "bg-ink text-paper",  Bar: "bg-ink",   Pct: total == 0 ? 0 : 100, Tag: "Tümü"),
+        (Label: "Yolda",          Count: transit,   Icon: "local_shipping", Chip: "bg-amber text-ink",  Bar: "bg-amber", Pct: Pct(transit),   Tag: $"%{Pct(transit)}"),
+        (Label: "Teslim edildi",  Count: delivered, Icon: "task_alt",       Chip: "bg-teal text-paper", Bar: "bg-teal",  Pct: Pct(delivered), Tag: $"%{Pct(delivered)}"),
+        (Label: "Sorunlu / iade", Count: problem,   Icon: "report",         Chip: "bg-rust text-paper", Bar: "bg-rust",  Pct: Pct(problem),   Tag: $"%{Pct(problem)}")
+    };
+
+    var subtitle = isManager
+        ? "Şubenizden çıkan ve şubenize gelen tüm gönderiler burada."
+        : "Gönderdiğiniz ve size gelen tüm kargolar burada.";
+    if (outForDelivery > 0)
+    {
+        subtitle += isManager ? $" Şu an dağıtımda {outForDelivery} gönderi var." : $" {outForDelivery} gönderiniz bugün dağıtımda.";
+    }
+}
+
+@if (TempData["SuccessMessage"] is not null)
+{
+    <div class="bg-teal text-paper px-6 py-3 text-sm font-medium flex items-center gap-2">
+        <span class="material-symbols-outlined text-lg">check_circle</span>
+        @TempData["SuccessMessage"]
+    </div>
+}
+
+<!-- ============ TOP BAND ============ -->
+<div class="relative bg-ink text-paper overflow-hidden">
+    <div class="glow w-[26rem] h-[26rem] bg-amber/20 -top-32 -left-24"></div>
+    <div class="glow w-[30rem] h-[30rem] bg-teal/20 -bottom-40 right-0"></div>
+    <div class="absolute inset-0 blueprint opacity-50"></div>
+
+    <section class="relative z-10 max-w-6xl mx-auto px-6 pt-10 pb-28">
+        <div class="rise flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div>
+                @if (isManager && branchName is not null)
+                {
+                    <span class="inline-flex items-center gap-1.5 text-sm text-amber bg-amber/10 border border-amber/30 rounded-full px-3 py-1">
+                        <span class="material-symbols-outlined text-base">storefront</span>
+                        @branchName
+                    </span>
+                }
+                else
+                {
+                    <span class="inline-flex items-center gap-1.5 text-sm text-amber bg-amber/10 border border-amber/30 rounded-full px-3 py-1">
+                        <span class="material-symbols-outlined text-base">person</span>
+                        Müşteri hesabı
+                    </span>
+                }
+                <h1 class="font-display font-bold text-4xl sm:text-5xl tracking-tight mt-5">Merhaba, @firstName</h1>
+                <p class="text-paper/55 mt-2 max-w-md">@subtitle</p>
+
+                @if (isManager)
+                {
+                    <a href="@Url.Action("Create")" class="inline-flex items-center gap-2 mt-5 bg-amber text-ink px-5 py-2.5 rounded-lg font-display font-semibold hover:bg-white transition-colors">
+                        <span class="material-symbols-outlined text-lg">add</span>
+                        Yeni Kargo Kabul Et
+                    </a>
+                }
+            </div>
+            <div class="flex items-center gap-2 text-sm text-paper/50">
+                <span class="material-symbols-outlined text-base">calendar_today</span>
+                @DateTime.UtcNow.ToLongTr()
+            </div>
+        </div>
+    </section>
+    <div class="hazard"></div>
+</div>
+
+<div class="max-w-6xl mx-auto px-6">
+
+    <!-- ============ STATS ============ -->
+    <div class="relative -mt-24 z-10 grid grid-cols-2 lg:grid-cols-4 gap-4">
+        @for (int s = 0; s < stats.Length; s++)
+        {
+            var stat = stats[s];
+            <div class="rise bg-white rounded-2xl border border-ink/10 p-5 shadow-[0_18px_40px_-24px_rgba(11,20,31,.45)]"
+                 style="animation-delay:@((0.1 + s * 0.06).ToString("0.00", CultureInfo.InvariantCulture))s">
+                <div class="flex items-center justify-between">
+                    <span class="w-10 h-10 rounded-xl @stat.Chip flex items-center justify-center">
+                        <span class="material-symbols-outlined text-xl">@stat.Icon</span>
+                    </span>
+                    <span class="text-xs text-ink/40">@stat.Tag</span>
+                </div>
+                <p class="font-display font-bold text-4xl mt-4 count" data-to="@stat.Count">@stat.Count</p>
+                <p class="text-sm text-ink/55">@stat.Label</p>
+                <div class="h-1 bg-ink/10 rounded-full mt-4 overflow-hidden">
+                    <div class="h-full @stat.Bar rounded-full bar-fill" style="width:@(stat.Pct)%"></div>
+                </div>
+            </div>
+        }
+    </div>
+
+    @if (total == 0)
+    {
+        <div class="rise relative bg-white border border-ink/10 rounded-2xl p-16 text-center overflow-hidden mt-12 mb-16" style="animation-delay:.34s">
+            <div class="absolute w-72 h-72 rounded-full bg-teal/5 -top-20 -left-20"></div>
+            <div class="absolute w-72 h-72 rounded-full bg-amber/5 -bottom-20 -right-20"></div>
+            <div class="relative">
+                <div class="w-16 h-16 rounded-2xl bg-paper border border-ink/10 flex items-center justify-center mx-auto mb-5">
+                    <span class="material-symbols-outlined text-ink/30" style="font-size:28px;">inventory_2</span>
+                </div>
+                <p class="font-display font-semibold text-xl mb-2">Henüz görüntülenecek kargo yok</p>
+                <p class="text-ink/50 text-sm max-w-sm mx-auto">
+                    @(isManager
+                        ? "Şubenize yeni bir kargo kaydedildiğinde burada listelenecek."
+                        : "Adınıza yeni bir gönderi oluşturulduğunda burada listelenecek.")
+                </p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <!-- ============ TOOLBAR ============ -->
+        <div class="rise mt-12 flex flex-col md:flex-row md:items-center justify-between gap-4" style="animation-delay:.34s">
+            <div class="flex flex-wrap gap-2" role="group" aria-label="Duruma göre filtrele">
+                <button type="button" class="chip focus-ring inline-flex items-center gap-2 border border-ink/15 rounded-full pl-4 pr-1.5 py-1.5 text-sm font-medium transition-colors hover:border-ink/40" data-filter="all" aria-pressed="true">
+                    Tümü <span class="chip-count text-xs rounded-full bg-ink/10 px-2 py-0.5">@total</span>
+                </button>
+                <button type="button" class="chip focus-ring inline-flex items-center gap-2 border border-ink/15 rounded-full pl-4 pr-1.5 py-1.5 text-sm font-medium transition-colors hover:border-ink/40" data-filter="transit" aria-pressed="false">
+                    Yolda <span class="chip-count text-xs rounded-full bg-ink/10 px-2 py-0.5">@transit</span>
+                </button>
+                <button type="button" class="chip focus-ring inline-flex items-center gap-2 border border-ink/15 rounded-full pl-4 pr-1.5 py-1.5 text-sm font-medium transition-colors hover:border-ink/40" data-filter="delivered" aria-pressed="false">
+                    Teslim edildi <span class="chip-count text-xs rounded-full bg-ink/10 px-2 py-0.5">@delivered</span>
+                </button>
+                <button type="button" class="chip focus-ring inline-flex items-center gap-2 border border-ink/15 rounded-full pl-4 pr-1.5 py-1.5 text-sm font-medium transition-colors hover:border-ink/40" data-filter="problem" aria-pressed="false">
+                    Sorunlu <span class="chip-count text-xs rounded-full bg-ink/10 px-2 py-0.5">@problem</span>
+                </button>
+            </div>
+            <label class="relative block md:w-72">
+                <span class="sr-only">Takip numarası ara</span>
+                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-ink/35 text-lg">search</span>
+                <input id="search" type="text" placeholder="Takip no ile ara"
+                       class="w-full bg-white border border-ink/15 rounded-full pl-10 pr-4 py-2.5 text-sm font-mono focus:outline-none focus:border-teal transition-colors" />
+            </label>
+        </div>
+
+        <!-- ============ LIST ============ -->
+        <div id="list" class="mt-6 space-y-3 pb-16">
+            @for (int i = 0; i < Model.Count; i++)
+            {
+                var cargo = Model[i];
+                var group = cargo.CargoStatus.ToFilterGroup();
+                var progress = cargo.CargoStatus.ToProgressPercent();
+                var delay = (0.4 + Math.Min(i, 8) * 0.06).ToString("0.00", CultureInfo.InvariantCulture);
+
+                <a href="@Url.Action("Detail", "Cargo", new { id = cargo.Id })"
+                   class="row rise focus-ring block bg-white border border-ink/10 rounded-2xl overflow-hidden"
+                   data-group="@group" data-code="@cargo.TrackCode.ToUpperInvariant()" style="animation-delay:@(delay)s">
+                    <div class="flex">
+                        <span class="w-1.5 @cargo.CargoStatus.ToAccentBarClass() shrink-0"></span>
+                        <div class="flex-1 p-5 grid md:grid-cols-12 gap-4 items-center">
+
+                            <div class="md:col-span-4">
+                                <p class="font-mono font-semibold">@cargo.TrackCode</p>
+                                <span class="mt-2 inline-flex items-center gap-1 text-xs font-semibold border rounded-full px-2.5 py-1 @cargo.CargoStatus.ToBadgeColorClass()">
+                                    <span class="material-symbols-outlined text-sm">@cargo.CargoStatus.ToIcon()</span>
+                                    @cargo.CargoStatus.ToDisplayText()
+                                </span>
+                            </div>
+
+                            <div class="md:col-span-5">
+                                <div class="flex items-center justify-between text-sm">
+                                    <span class="font-medium">@cargo.OriginCityName</span>
+                                    <span class="font-medium">@cargo.DestinationCityName</span>
+                                </div>
+                                <div class="relative h-1.5 bg-ink/10 rounded-full mt-2 overflow-hidden">
+                                    <div class="absolute inset-y-0 left-0 @cargo.CargoStatus.ToRouteFillClass() rounded-full bar-fill" style="width:@(progress)%"></div>
+                                </div>
+                                <div class="flex items-center justify-between text-xs text-ink/45 mt-1.5 gap-4">
+                                    <span class="truncate">@cargo.OriginBranchName</span>
+                                    <span class="truncate text-right">@cargo.DestinationBranchName</span>
+                                </div>
+                            </div>
+
+                            <div class="md:col-span-3 flex items-center justify-between md:justify-end gap-4">
+                                <div class="md:text-right">
+                                    @if (group == "transit")
+                                    {
+                                        <p class="text-xs text-ink/45">Tahmini teslimat</p>
+                                        <p class="font-display font-semibold @(cargo.IsDelayed ? "text-rust" : "")">@cargo.EstimatedArrivalDate.ToRelativeDay()</p>
+                                        @if (cargo.IsDelayed)
+                                        {
+                                            <p class="text-[11px] font-semibold text-rust">Gecikmede</p>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <p class="text-xs text-ink/45">Gönderim tarihi</p>
+                                        <p class="font-display font-semibold @(group == "delivered" ? "text-teal" : "text-rust")">@cargo.ShipmentDate.ToShortTr()</p>
+                                    }
+                                </div>
+                                <span class="go w-9 h-9 rounded-full bg-paper text-ink/60 flex items-center justify-center transition-colors">
+                                    <span class="material-symbols-outlined text-lg">arrow_forward</span>
+                                </span>
+                            </div>
+
+                        </div>
+                    </div>
+                </a>
+            }
+
+            <div id="emptyFilter" class="hidden bg-white border border-dashed border-ink/20 rounded-2xl p-12 text-center">
+                <span class="material-symbols-outlined text-ink/25" style="font-size:40px">search_off</span>
+                <p class="font-display font-semibold mt-3">Bu filtreye uyan gönderi yok</p>
+                <p class="text-sm text-ink/50 mt-1">Farklı bir durum seçin ya da aramayı temizleyin.</p>
+            </div>
+        </div>
+    }
+</div>
+
+@section Styles {
+    <style>
+        .chip[aria-pressed="true"] { background: #0B141F; color: #F3F5F1; border-color: #0B141F; }
+        .chip[aria-pressed="true"] .chip-count { background: #E8A93B; color: #0B141F; }
+        .row { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+        .row:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -14px rgba(11,20,31,.35); border-color: rgba(11,20,31,.2); }
+        .row:hover .go { background: #0B141F; color: #E8A93B; }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        document.querySelectorAll('.count').forEach(el => {
+            const to = +el.dataset.to;
+            if (reduce || to === 0) { el.textContent = to; return; }
+            el.textContent = 0;
+            const dur = 900;
+            setTimeout(() => {
+                const start = performance.now();
+                const tick = t => {
+                    const p = Math.min((t - start) / dur, 1);
+                    el.textContent = Math.round(to * (1 - Math.pow(1 - p, 3)));
+                    if (p < 1) requestAnimationFrame(tick);
+                };
+                requestAnimationFrame(tick);
+            }, 300);
+        });
+
+        const chips = document.querySelectorAll('.chip');
+        const rows = document.querySelectorAll('#list .row');
+        const search = document.getElementById('search');
+        const empty = document.getElementById('emptyFilter');
+        let active = 'all';
+
+        function apply() {
+            const q = (search?.value || '').trim().toUpperCase();
+            let shown = 0;
+            rows.forEach(r => {
+                const ok = (active === 'all' || r.dataset.group === active) && r.dataset.code.includes(q);
+                r.classList.toggle('hidden', !ok);
+                if (ok) shown++;
+            });
+            empty?.classList.toggle('hidden', shown > 0);
+        }
+
+        chips.forEach(c => c.addEventListener('click', () => {
+            chips.forEach(x => x.setAttribute('aria-pressed', 'false'));
+            c.setAttribute('aria-pressed', 'true');
+            active = c.dataset.filter;
+            apply();
+        }));
+        search?.addEventListener('input', apply);
+    </script>
+}

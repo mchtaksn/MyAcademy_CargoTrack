@@ -1,0 +1,66 @@
+﻿@model CargoTrack.Dto.Dtos.BranchDtos.UpdateBranchDto
+@using Microsoft.AspNetCore.Mvc.Rendering
+@{
+    ViewData["Title"] = "Şube Düzenle";
+    Layout = "_AdminLayout";
+    List<SelectListItem> cities = ViewBag.Cities;
+}
+
+<a href="@Url.Action("Index")" class="inline-flex items-center gap-1.5 text-sm text-on-surface-variant hover:text-primary-container mb-6 transition-colors">
+    <span class="material-symbols-outlined text-base">arrow_back</span>
+    Şube listesine dön
+</a>
+
+<div class="max-w-xl bg-white rounded-2xl border border-outline-variant p-7">
+    <div class="flex items-center gap-3 mb-1">
+        <div class="w-10 h-10 rounded-xl bg-secondary-container/10 flex items-center justify-center">
+            <span class="material-symbols-outlined text-secondary">edit</span>
+        </div>
+        <h2 class="font-extrabold text-lg text-on-background">Şube Düzenle</h2>
+    </div>
+    <p class="text-sm text-on-surface-variant mb-7 ml-[52px]">Şube bilgilerini güncelleyin.</p>
+
+    <form asp-action="Update" method="post" class="space-y-5">
+        @Html.AntiForgeryToken()
+        <input type="hidden" asp-for="Id" />
+        <div asp-validation-summary="All" class="text-error text-sm font-medium"></div>
+
+        <div>
+            <label class="block text-sm font-bold text-on-background mb-1.5">Şube Adı</label>
+            <input asp-for="Name" class="field-input" />
+            <span asp-validation-for="Name" class="text-error text-xs"></span>
+        </div>
+
+        <div>
+            <label class="block text-sm font-bold text-on-background mb-1.5">Şehir</label>
+            <select asp-for="CityId" asp-items="cities" class="field-input">
+                <option value="">Seçiniz</option>
+            </select>
+            <span asp-validation-for="CityId" class="text-error text-xs"></span>
+        </div>
+
+        <div class="flex gap-3 pt-3">
+            <button type="submit" class="flex items-center gap-2 bg-primary-container text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-primary-container-light transition-colors">
+                <span class="material-symbols-outlined text-lg">save</span>
+                Kaydet
+            </button>
+            <a href="@Url.Action("Index")" class="px-6 py-3 rounded-xl font-bold text-sm text-on-surface-variant hover:bg-surface-container-low transition-colors">
+                Vazgeç
+            </a>
+        </div>
+    </form>
+</div>
+
+@section Styles {
+    <style>
+        .field-input {
+            width: 100%; border: 1.5px solid #dfe3ee; border-radius: 0.75rem;
+            padding: 0.7rem 1rem; font-size: 0.9375rem; transition: border-color .15s, box-shadow .15s;
+        }
+        .field-input:focus { outline: none; border-color: #001e3c; box-shadow: 0 0 0 3px rgba(0,30,60,.08); }
+    </style>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

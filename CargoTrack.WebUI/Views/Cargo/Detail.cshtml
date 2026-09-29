@@ -1,0 +1,662 @@
+﻿@model CargoTrack.Dto.Dtos.CargoDtos.ResultCargoDto
+@using CargoTrack.WebUI.Extensions
+@using CargoTrack.Entity.Entities.Enums
+@{
+    ViewData["Title"] = "Gönderi Detayı";
+    Layout = "_PublicLayout";
+
+    var status = Model.CargoStatus;
+    var progress = status.ToProgressPercent();
+    var isFinal = status.IsFinal();
+    var isProblem = status.IsProblem();
+    var movements = Model.Movements;
+    var lastMovement = movements.LastOrDefault();
+    var totalSteps = movements.Count + (isFinal ? 0 : 1);
+
+    var isManager = User.IsInRole("Manager");
+    List<CargoStatus>? allowedNext = isManager ? ViewBag.AllowedNextStatuses as List<CargoStatus> : null;
+    string managerAction = isManager ? (ViewBag.ManagerAction ?? "none") : "none";
+
+    string PrintBadgeClass(string g) => g switch
+    {
+        "delivered" => "#0f5132",
+        "problem" => "#842029",
+        _ => "#8a5300"
+    };
+    string PrintBadgeBg(string g) => g switch
+    {
+        "delivered" => "#d1f2dd",
+        "problem" => "#ffdad6",
+        _ => "#ffe9c2"
+    };
+    var group = status.ToFilterGroup();
+}
+
+@if (TempData["SuccessMessage"] is not null)
+{
+    <div class="bg-teal text-paper px-6 py-3 text-sm font-medium flex items-center gap-2 no-print">
+        <span class="material-symbols-outlined text-lg">check_circle</span>
+        @TempData["SuccessMessage"]
+    </div>
+}
+@if (TempData["ErrorMessage"] is not null)
+{
+    <div class="bg-rust text-paper px-6 py-3 text-sm font-medium flex items-center gap-2 no-print">
+        <span class="material-symbols-outlined text-lg">error</span>
+        @TempData["ErrorMessage"]
+    </div>
+}
+
+<!-- ============ SCREEN VIEW ============ -->
+<div id="screenView">
+
+    <!-- ============ TOP BAND ============ -->
+    <div class="relative bg-ink text-paper overflow-hidden">
+        <div class="glow w-[26rem] h-[26rem] bg-amber/20 -top-32 -left-24"></div>
+        <div class="glow w-[30rem] h-[30rem] bg-teal/20 -bottom-40 right-0"></div>
+        <div class="absolute inset-0 blueprint opacity-50"></div>
+
+        <section class="relative z-10 max-w-6xl mx-auto px-6 pt-8 pb-10">
+            <a href="@Url.Action("Index", "Cargo")" class="rise inline-flex items-center gap-1.5 text-sm text-paper/55 hover:text-amber transition-colors focus-ring rounded">
+                <span class="material-symbols-outlined text-base">arrow_back</span>
+                Kargo listesine dön
+            </a>
+
+            <div class="rise mt-6 flex flex-col lg:flex-row lg:items-end justify-between gap-6" style="animation-delay:.08s">
+                <div>
+                    <p class="text-sm text-paper/50 mb-2">Takip numarası</p>
+                    <div class="flex flex-wrap items-center gap-4">
+                        <h1 class="font-mono font-semibold text-3xl sm:text-4xl tracking-wide">@Model.TrackCode</h1>
+                        <button id="copyBtn" type="button" data-code="@Model.TrackCode" title="Kopyala"
+                                class="focus-ring w-9 h-9 rounded-lg border border-paper/15 text-paper/60 hover:text-amber hover:border-amber/50 transition-colors flex items-center justify-center">
+                            <span class="material-symbols-outlined text-lg">content_copy</span>
+                        </button>
+                        <span class="stamp @status.ToBadgeColorClass()">
+                            <span class="material-symbols-outlined text-base">@status.ToIcon()</span>
+                            @status.ToDisplayText()
+                        </span>
+                        @if (Model.IsDelayed)
+                        {
+                            <span class="stamp text-rust bg-rust/10">
+                                <span class="material-symbols-outlined text-base">schedule</span>
+                                Gecikmede
+                            </span>
+                        }
+                    </div>
+                </div>
+                <div class="flex gap-3">
+                    <button id="printBtn" type="button"
+                            class="focus-ring flex items-center gap-2 border border-paper/20 text-paper/80 hover:text-paper hover:border-paper/40 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors">
+                        <span class="material-symbols-outlined text-lg">print</span>
+                        Yazdır
+                    </button>
+                    <a href="@Url.Action("Track", "Cargo")"
+                       class="focus-ring flex items-center gap-2 bg-amber text-ink rounded-lg px-4 py-2.5 text-sm font-display font-semibold hover:bg-paper transition-colors">
+                        <span class="material-symbols-outlined text-lg">search</span>
+                        Yeni kargo sorgula
+                    </a>
+                </div>
+            </div>
+
+            <!-- Route card with real map -->
+            <div class="rise mt-10 bg-inkSoft/80 backdrop-blur border border-paper/10 rounded-2xl p-6 sm:p-8" style="animation-delay:.16s">
+                <div class="flex items-center justify-between mb-5">
+                    <div class="flex items-center gap-3">
+                        <span class="w-10 h-10 rounded-xl bg-teal/15 border border-teal/40 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-teal">inventory_2</span>
+                        </span>
+                        <div>
+                            <p class="font-display font-semibold text-base sm:text-lg">@Model.OriginCityName</p>
+                            <p class="text-xs text-paper/50">@Model.OriginBranchName</p>
+                        </div>
+                    </div>
+                    <span class="material-symbols-outlined text-paper/25 text-2xl">arrow_forward</span>
+                    <div class="flex items-center gap-3 text-right">
+                        <div>
+                            <p class="font-display font-semibold text-base sm:text-lg">@Model.DestinationCityName</p>
+                            <p class="text-xs text-paper/50">@Model.DestinationBranchName</p>
+                        </div>
+                        <span class="w-10 h-10 rounded-xl bg-amber/15 border border-amber/40 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-amber">home_pin</span>
+                        </span>
+                    </div>
+                </div>
+
+                @{
+                    var routeMapModel = new CargoTrack.WebUI.Models.RouteMapViewModel
+                    {
+                        MapId = "routeMap-" + Model.TrackCode.Replace("-", ""),
+                        OriginLat = Model.OriginLat,
+                        OriginLng = Model.OriginLng,
+                        DestinationLat = Model.DestinationLat,
+                        DestinationLng = Model.DestinationLng,
+                        OriginLabel = Model.OriginCityName,
+                        DestinationLabel = Model.DestinationCityName,
+                        ProgressPercent = progress,
+                        AccentHex = isProblem ? "#C1523B" : status == CargoStatus.Delivered ? "#2A8577" : "#E8A93B"
+                    };
+                }
+                <partial name="_RouteMap" model="routeMapModel" />
+
+                <p class="text-[11px] text-paper/40 mt-3 text-right">%@progress tamamlandı</p>
+            </div>
+        </section>
+        <div class="hazard"></div>
+    </div>
+
+    <!-- ============ BODY ============ -->
+    <div class="max-w-6xl mx-auto px-6 py-10">
+        <div class="grid lg:grid-cols-12 gap-6">
+
+            <div class="lg:col-span-7 space-y-6">
+
+                <!-- Delivery status card -->
+                <div class="rise relative overflow-hidden rounded-2xl @(isProblem ? "bg-rust" : "bg-teal") text-paper p-6 sm:p-7" style="animation-delay:.24s">
+                    @if (status == CargoStatus.Delivered)
+                    {
+                        <span class="material-symbols-outlined absolute -right-4 -bottom-8 text-paper/10 select-none" style="font-size:170px">task_alt</span>
+                        <p class="text-sm text-paper/70 mb-1">Teslim edildi</p>
+                        <p class="font-display font-bold text-3xl sm:text-4xl">@(lastMovement?.MovementDate.ToRelativeDay())</p>
+                        <p class="text-paper/75 mt-1">@(lastMovement?.MovementDate.ToLongTr())</p>
+                    }
+                    else if (isProblem)
+                    {
+                        <span class="material-symbols-outlined absolute -right-4 -bottom-8 text-paper/10 select-none" style="font-size:170px">undo</span>
+                        <p class="text-sm text-paper/70 mb-1">Teslimat durumu</p>
+                        <p class="font-display font-bold text-3xl sm:text-4xl">@status.ToDisplayText()</p>
+                        <p class="text-paper/75 mt-1">Son işlem: @(lastMovement?.MovementDate.ToDateTimeTr())</p>
+                    }
+                    else
+                    {
+                        <span class="material-symbols-outlined absolute -right-4 -bottom-8 text-paper/10 select-none" style="font-size:170px">schedule</span>
+                        <p class="text-sm text-paper/70 mb-1">Tahmini teslimat</p>
+                        <p class="font-display font-bold text-3xl sm:text-4xl">@Model.EstimatedArrivalDate.ToRelativeDay()</p>
+                        <p class="text-paper/75 mt-1">@Model.EstimatedArrivalDate.ToLongTr()</p>
+                    }
+
+                    <div class="relative mt-5 flex flex-wrap gap-2">
+                        <span class="inline-flex items-center gap-2 bg-paper/10 rounded-full px-3 py-1.5 text-sm">
+                            @if (!isFinal)
+                            {
+                                <span class="w-2 h-2 rounded-full bg-amber animate-pulse"></span>
+                            }
+                            @status.ToHint()
+                        </span>
+                        @if (Model.IsDelayed)
+                        {
+                            <span class="inline-flex items-center gap-1.5 bg-ink/30 rounded-full px-3 py-1.5 text-sm">
+                                <span class="material-symbols-outlined text-base">warning</span>
+                                Tahmini teslim süresi aşıldı
+                            </span>
+                        }
+                    </div>
+                </div>
+
+                <!-- People -->
+                <div class="rise grid sm:grid-cols-2 gap-4" style="animation-delay:.3s">
+                    <div class="bg-white border border-ink/10 rounded-2xl p-5 flex items-start gap-4">
+                        <div class="w-12 h-12 rounded-full bg-ink text-paper font-display font-bold flex items-center justify-center shrink-0">@Model.SenderFullName.ToInitials()</div>
+                        <div class="min-w-0">
+                            <p class="text-xs text-ink/45 mb-0.5 flex items-center gap-1"><span class="material-symbols-outlined text-sm">north_east</span>Gönderici</p>
+                            <p class="font-display font-semibold text-lg truncate">@Model.SenderFullName</p>
+                            <p class="text-sm text-ink/55 flex items-center gap-1 mt-0.5"><span class="material-symbols-outlined text-sm">storefront</span>@Model.OriginBranchName</p>
+                        </div>
+                    </div>
+                    <div class="bg-white border border-ink/10 rounded-2xl p-5 flex items-start gap-4">
+                        <div class="w-12 h-12 rounded-full bg-amber text-ink font-display font-bold flex items-center justify-center shrink-0">@Model.ReceiverFullName.ToInitials()</div>
+                        <div class="min-w-0">
+                            <p class="text-xs text-ink/45 mb-0.5 flex items-center gap-1"><span class="material-symbols-outlined text-sm">south_west</span>Alıcı</p>
+                            <p class="font-display font-semibold text-lg truncate">@Model.ReceiverFullName</p>
+                            <p class="text-sm text-ink/55 flex items-center gap-1 mt-0.5"><span class="material-symbols-outlined text-sm">storefront</span>@Model.DestinationBranchName</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Package -->
+                <div class="rise bg-white border border-ink/10 rounded-2xl p-6" style="animation-delay:.36s">
+                    <div class="flex items-center justify-between mb-5">
+                        <h2 class="font-display font-semibold text-lg">Paket bilgileri</h2>
+                        <span class="text-xs font-medium bg-ink text-paper rounded-full px-3 py-1">@Model.CargoType.ToDisplayText()</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div class="bg-paper rounded-xl p-4">
+                            <span class="material-symbols-outlined text-ink/35 text-xl">scale</span>
+                            <p class="font-display font-bold text-xl mt-2">@Model.Weight.ToTrNumber() <span class="text-sm font-medium text-ink/50">kg</span></p>
+                            <p class="text-xs text-ink/50">Ağırlık</p>
+                        </div>
+                        <div class="bg-paper rounded-xl p-4">
+                            <span class="material-symbols-outlined text-ink/35 text-xl">deployed_code</span>
+                            <p class="font-display font-bold text-xl mt-2">@Model.Desi.ToTrNumber()</p>
+                            <p class="text-xs text-ink/50">Desi</p>
+                        </div>
+                        <div class="bg-paper rounded-xl p-4">
+                            <span class="material-symbols-outlined text-ink/35 text-xl">straighten</span>
+                            <p class="font-display font-bold text-xl mt-2 whitespace-nowrap">@Model.Width.ToTrNumber()×@Model.Length.ToTrNumber()×@Model.Height.ToTrNumber()</p>
+                            <p class="text-xs text-ink/50">Ölçüler (cm)</p>
+                        </div>
+                        <div class="bg-paper rounded-xl p-4">
+                            <span class="material-symbols-outlined text-ink/35 text-xl">event</span>
+                            <p class="font-display font-bold text-xl mt-2">@Model.ShipmentDate.ToShortTr()</p>
+                            <p class="text-xs text-ink/50">Gönderim tarihi</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timeline + status update -->
+            <aside class="lg:col-span-5 space-y-6">
+
+                @if (managerAction == "simple" && allowedNext is { Count: > 0 })
+                {
+                    <div class="rise bg-white border border-ink/10 rounded-2xl p-6" style="animation-delay:.2s">
+                        <h2 class="font-display font-semibold text-lg mb-1 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-amber">update</span>
+                            Durum Güncelle
+                        </h2>
+                        <p class="text-sm text-ink/50 mb-4">Şubenizin gerçekleştirdiği son işlemi seçin.</p>
+
+                        <form asp-action="ChangeStatus" asp-controller="Cargo" method="post" class="space-y-3">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="cargoId" value="@Model.Id" />
+                            <select name="newStatus" required class="w-full border-2 border-ink/15 rounded-xl px-4 py-2.5 focus:outline-none focus:border-teal transition-colors">
+                                <option value="">Yeni durum seçin</option>
+                                @foreach (var s in allowedNext)
+                                {
+                                    <option value="@((int)s)">@s.ToDisplayText()</option>
+                                }
+                            </select>
+                            <textarea name="description" rows="2" placeholder="Açıklama (opsiyonel)"
+                                      class="w-full border-2 border-ink/15 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-teal transition-colors resize-none"></textarea>
+                            <button type="submit" class="w-full bg-ink text-paper rounded-xl px-4 py-2.5 font-display font-semibold hover:bg-teal transition-colors flex items-center justify-center gap-2">
+                                <span class="material-symbols-outlined text-lg">check</span>
+                                Durumu Güncelle
+                            </button>
+                        </form>
+                    </div>
+                }
+                else if (managerAction == "dispatch")
+                {
+                    <div class="rise bg-white border border-ink/10 rounded-2xl p-6" style="animation-delay:.2s">
+                        <h2 class="font-display font-semibold text-lg mb-1 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-amber">local_shipping</span>
+                            Dağıtıma Çıkar
+                        </h2>
+                        <p class="text-sm text-ink/50 mb-4">Kargo dağıtıma çıkarıldığında 6 haneli bir teslimat kodu otomatik oluşturulur.</p>
+                        <form asp-action="Dispatch" asp-controller="Cargo" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="cargoId" value="@Model.Id" />
+                            <button type="submit" class="w-full bg-ink text-paper rounded-xl px-4 py-2.5 font-display font-semibold hover:bg-teal transition-colors flex items-center justify-center gap-2">
+                                <span class="material-symbols-outlined text-lg">local_shipping</span>
+                                Dağıtıma Çıkar
+                            </button>
+                        </form>
+                    </div>
+                }
+                else if (managerAction == "delivery")
+                {
+                    <div class="rise bg-white border border-ink/10 rounded-2xl p-6 space-y-5" style="animation-delay:.2s">
+                        <div>
+                            <h2 class="font-display font-semibold text-lg mb-1 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-teal">verified</span>
+                                Teslimatı Tamamla
+                            </h2>
+                            <p class="text-sm text-ink/50 mb-3">Alıcının size ilettiği teslimat kodunu girin.</p>
+                            <form asp-action="Deliver" asp-controller="Cargo" method="post" class="space-y-3">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="cargoId" value="@Model.Id" />
+                                <input type="text" name="deliveryCode" required maxlength="6" placeholder="6 haneli kod"
+                                       class="w-full border-2 border-ink/15 rounded-xl px-4 py-2.5 font-mono tracking-widest text-center focus:outline-none focus:border-teal transition-colors" />
+                                <input type="text" name="receivedByName" required placeholder="Teslim alan kişi (Ad Soyad)"
+                                       class="w-full border-2 border-ink/15 rounded-xl px-4 py-2.5 focus:outline-none focus:border-teal transition-colors" />
+                                <button type="submit" class="w-full bg-teal text-paper rounded-xl px-4 py-2.5 font-display font-semibold hover:bg-ink transition-colors flex items-center justify-center gap-2">
+                                    <span class="material-symbols-outlined text-lg">check</span>
+                                    Teslim Edildi Olarak İşaretle
+                                </button>
+                            </form>
+                        </div>
+
+                        <div class="border-t border-ink/10 pt-5">
+                            <p class="text-sm font-medium text-rust mb-3 flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-base">report</span>
+                                Teslimat gerçekleşmedi mi?
+                            </p>
+                            <form asp-action="ReportFailedDelivery" asp-controller="Cargo" method="post" class="flex gap-2">
+                                @Html.AntiForgeryToken()
+                                <input type="hidden" name="cargoId" value="@Model.Id" />
+                                <select name="reason" required asp-items="Html.GetEnumSelectList<DeliveryExceptionReason>()"
+                                        class="flex-grow border-2 border-ink/15 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-rust transition-colors">
+                                    <option value="">Neden seçin</option>
+                                </select>
+                                <button type="submit" class="bg-rust text-paper rounded-xl px-4 py-2.5 text-sm font-display font-semibold hover:bg-ink transition-colors">
+                                    Kaydet
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                }
+                else if (managerAction == "redispatch")
+                {
+                    <div class="rise bg-white border border-ink/10 rounded-2xl p-6" style="animation-delay:.2s">
+                        <h2 class="font-display font-semibold text-lg mb-1 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-amber">restart_alt</span>
+                            Yeniden Dağıtıma Çıkar
+                        </h2>
+                        <p class="text-sm text-ink/50 mb-4">Önceki teslimat denemesi başarısız oldu. Yeni bir teslimat kodu oluşturularak tekrar denenecek.</p>
+                        <form asp-action="Dispatch" asp-controller="Cargo" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="cargoId" value="@Model.Id" />
+                            <button type="submit" class="w-full bg-ink text-paper rounded-xl px-4 py-2.5 font-display font-semibold hover:bg-amber hover:text-ink transition-colors flex items-center justify-center gap-2">
+                                <span class="material-symbols-outlined text-lg">restart_alt</span>
+                                Yeniden Dağıtıma Çıkar
+                            </button>
+                        </form>
+                    </div>
+                }
+                else if (managerAction == "return")
+                {
+                    <div class="rise bg-white border border-ink/10 rounded-2xl p-6" style="animation-delay:.2s">
+                        <h2 class="font-display font-semibold text-lg mb-1 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-rust">assignment_return</span>
+                            İade Sürecini Tamamla
+                        </h2>
+                        <p class="text-sm text-ink/50 mb-4">Kargo göndericiye ulaştığında bu işlemi tamamlayın.</p>
+                        <form asp-action="ChangeStatus" asp-controller="Cargo" method="post">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="cargoId" value="@Model.Id" />
+                            <input type="hidden" name="newStatus" value="@((int)CargoStatus.ReturnedToSender)" />
+                            <button type="submit" class="w-full bg-rust text-paper rounded-xl px-4 py-2.5 font-display font-semibold hover:bg-ink transition-colors flex items-center justify-center gap-2">
+                                <span class="material-symbols-outlined text-lg">check</span>
+                                Göndericiye İade Edildi Olarak İşaretle
+                            </button>
+                        </form>
+                    </div>
+                }
+
+                <div class="rise bg-white border border-ink/10 rounded-2xl p-6 lg:sticky lg:top-6" style="animation-delay:.3s">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="font-display font-semibold text-lg">Kargo hareketleri</h2>
+                        <span class="text-xs text-ink/45">@movements.Count / @totalSteps adım</span>
+                    </div>
+
+                    <ol class="relative">
+                        @for (int i = 0; i < movements.Count; i++)
+                        {
+                            var m = movements[i];
+                            var isLast = i == movements.Count - 1;
+                            var isCurrent = isLast && !isFinal;
+                            var hasNext = !isLast || !isFinal;
+
+                            var nodeClass = isCurrent
+                                ? $"{status.ToSolidClass()} now-ring"
+                                : isLast && isFinal
+                                    ? status.ToSolidClass()
+                                    : "bg-ink text-paper";
+
+                            <li class="relative pl-12 pb-7">
+                                @if (hasNext)
+                                {
+                                    <span class="tl-rail @(isCurrent ? "upcoming" : "")"></span>
+                                }
+                                <span class="absolute left-0 top-0 w-8 h-8 rounded-full flex items-center justify-center @nodeClass" style="--ring:@status.ToRingColor()">
+                                    <span class="material-symbols-outlined text-base">@m.NewStatus.ToIcon()</span>
+                                </span>
+
+                                @if (isCurrent)
+                                {
+                                    <div class="@(isProblem ? "bg-rust/10 border-rust/30" : "bg-amber/10 border-amber/30") border rounded-xl p-3 -mt-1">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <p class="font-semibold">@m.NewStatus.ToDisplayText()</p>
+                                            <span class="text-[11px] font-semibold text-amber bg-ink rounded-full px-2 py-0.5">Şu an</span>
+                                        </div>
+                                        <p class="text-sm text-ink/55 mt-0.5">@m.LocationName</p>
+                                        @if (!string.IsNullOrWhiteSpace(m.Description))
+                                        {
+                                            <p class="text-xs text-ink/50 mt-1">@m.Description</p>
+                                        }
+                                        <p class="font-mono text-xs text-ink/40 mt-1">@m.MovementDate.ToDateTimeTr()</p>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <p class="font-medium">@m.NewStatus.ToDisplayText()</p>
+                                    <p class="text-sm text-ink/50 mt-0.5">@m.LocationName</p>
+                                    @if (!string.IsNullOrWhiteSpace(m.Description))
+                                    {
+                                        <p class="text-xs text-ink/45 mt-1">@m.Description</p>
+                                    }
+                                    <p class="font-mono text-xs text-ink/40 mt-1">@m.MovementDate.ToDateTimeTr()</p>
+                                }
+                            </li>
+                        }
+
+                        @if (!isFinal)
+                        {
+                            <li class="relative pl-12">
+                                <span class="absolute left-0 top-0 w-8 h-8 rounded-full border-2 border-dashed border-ink/25 bg-white flex items-center justify-center">
+                                    <span class="material-symbols-outlined text-base text-ink/30">@(isProblem ? "assignment_return" : "task_alt")</span>
+                                </span>
+                                <p class="font-medium text-ink/40">@(isProblem ? "Göndericiye iade edilecek" : "Teslim edilecek")</p>
+                                @if (!isProblem)
+                                {
+                                    <p class="text-sm text-ink/35 mt-0.5">Beklenen: @Model.EstimatedArrivalDate.ToRelativeDay()</p>
+                                }
+                            </li>
+                        }
+                    </ol>
+                </div>
+            </aside>
+        </div>
+    </div>
+</div>
+
+<!-- ============ PRINT-ONLY RECEIPT ============ -->
+<div id="printView">
+    <table class="p-letterhead">
+        <tr>
+            <td class="p-mark-cell">
+                <div class="p-mark">CT</div>
+                <div>
+                    <div class="p-brand-name">CargoTrack Lojistik A.Ş.</div>
+                    <div class="p-brand-sub">Gönderi Takip ve Lojistik Hizmetleri</div>
+                </div>
+            </td>
+            <td class="p-title-cell">
+                <div class="p-doc-title">GÖNDERİ MAKBUZU</div>
+                <div class="p-doc-ref">Belge No: @Model.TrackCode-@DateTime.UtcNow.ToString("yyyyMMdd")</div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="p-rule"></div>
+
+    <table class="p-toprow">
+        <tr>
+            <td>
+                <p class="p-label">TAKİP NUMARASI</p>
+                <p class="p-track-code">@Model.TrackCode</p>
+                <div class="p-barcode">
+                    @for (int b = 0; b < 40; b++)
+                    {
+                        var w = (b * 37 + Model.TrackCode.Length * 13) % 3 == 0 ? "3px" : "1.5px";
+                        <span style="width:@w;"></span>
+                    }
+                </div>
+            </td>
+            <td class="p-stamp-cell">
+                <div class="p-stamp">@status.ToDisplayText()</div>
+            </td>
+        </tr>
+    </table>
+
+    <table class="p-info-table">
+        <tr>
+            <th colspan="2">GÖNDERİCİ BİLGİLERİ</th>
+            <th colspan="2">ALICI BİLGİLERİ</th>
+        </tr>
+        <tr>
+            <td class="p-info-label">Ad Soyad</td>
+            <td class="p-info-value">@Model.SenderFullName</td>
+            <td class="p-info-label">Ad Soyad</td>
+            <td class="p-info-value">@Model.ReceiverFullName</td>
+        </tr>
+        <tr>
+            <td class="p-info-label">Şube</td>
+            <td class="p-info-value">@Model.OriginBranchName</td>
+            <td class="p-info-label">Şube</td>
+            <td class="p-info-value">@Model.DestinationBranchName</td>
+        </tr>
+        <tr>
+            <td class="p-info-label">Şehir</td>
+            <td class="p-info-value">@Model.OriginCityName</td>
+            <td class="p-info-label">Şehir</td>
+            <td class="p-info-value">@Model.DestinationCityName</td>
+        </tr>
+    </table>
+
+    <table class="p-info-table">
+        <tr><th colspan="6">GÖNDERİ BİLGİLERİ</th></tr>
+        <tr>
+            <td class="p-info-label">Gönderi Tipi</td>
+            <td class="p-info-value">@Model.CargoType.ToDisplayText()</td>
+            <td class="p-info-label">Ağırlık</td>
+            <td class="p-info-value">@Model.Weight.ToTrNumber() kg</td>
+            <td class="p-info-label">Desi</td>
+            <td class="p-info-value">@Model.Desi.ToTrNumber()</td>
+        </tr>
+        <tr>
+            <td class="p-info-label">Ölçüler</td>
+            <td class="p-info-value">@Model.Width.ToTrNumber()×@Model.Length.ToTrNumber()×@Model.Height.ToTrNumber() cm</td>
+            <td class="p-info-label">Gönderim Tarihi</td>
+            <td class="p-info-value">@Model.ShipmentDate.ToShortTr()</td>
+            <td class="p-info-label">Tah. Teslimat</td>
+            <td class="p-info-value" style="@(Model.IsDelayed ? "color:#ba1a1a;" : "")">@Model.EstimatedArrivalDate.ToShortTr()</td>
+        </tr>
+    </table>
+
+    <p class="p-section-title">KARGO HAREKETLERİ</p>
+    <table class="p-move-table">
+        <thead>
+            <tr>
+                <th>Tarih / Saat</th>
+                <th>Durum</th>
+                <th>Konum</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var m in movements)
+            {
+                <tr>
+                    <td class="p-mono">@m.MovementDate.ToDateTimeTr()</td>
+                    <td>@m.NewStatus.ToDisplayText()</td>
+                    <td>@m.LocationName</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <table class="p-sign-table">
+        <tr>
+            <td>
+                <p class="p-sign-label">Teslim Eden</p>
+                <div class="p-sign-line"></div>
+            </td>
+            <td>
+                <p class="p-sign-label">Teslim Alan (Ad Soyad / İmza)</p>
+                <div class="p-sign-line"></div>
+            </td>
+        </tr>
+    </table>
+
+    <div class="p-footer-line"></div>
+    <p class="p-footer-text">Bu belge @DateTime.UtcNow.ToTurkeyPrintStamp() tarihinde elektronik olarak oluşturulmuştur. CargoTrack Lojistik A.Ş.</p>
+</div>
+
+@section Styles {
+    <style>
+        .tl-rail { position: absolute; left: 15px; top: 34px; bottom: -6px; width: 2px; background: #0B141F; opacity: .12; }
+        .tl-rail.upcoming { opacity: 1; background: none; border-left: 2px dashed rgba(11,20,31,.18); width: 0; }
+        .now-ring::before { content: ""; position: absolute; inset: -6px; border-radius: 9999px; border: 2px solid var(--ring, #E8A93B); animation: ring 1.8s ease-out infinite; }
+        @@keyframes ring { from { transform: scale(.75); opacity: .9; } to { transform: scale(1.5); opacity: 0; } }
+
+        #printView { display: none; }
+
+        @@media print {
+            @@page { size: A4; margin: 16mm; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; animation: none !important; }
+            #screenView, .no-print { display: none !important; }
+
+            #printView {
+                display: block !important;
+                font-family: 'Inter', system-ui, sans-serif;
+                color: #16202c;
+                font-size: 12.5px;
+            }
+
+            .p-letterhead { width: 100%; margin-bottom: 10px; }
+            .p-mark-cell { display: flex; align-items: center; gap: 10px; }
+            .p-mark {
+                width: 34px; height: 34px; border: 2px solid #0B141F; border-radius: 6px;
+                display: flex; align-items: center; justify-content: center;
+                font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 13px;
+            }
+            .p-brand-name { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 14px; }
+            .p-brand-sub { font-size: 9.5px; color: #6b7280; }
+            .p-title-cell { text-align: right; vertical-align: top; }
+            .p-doc-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 13px; letter-spacing: 0.06em; }
+            .p-doc-ref { font-size: 9.5px; color: #6b7280; margin-top: 2px; font-family: 'IBM Plex Mono', monospace; }
+
+            .p-rule { height: 2px; background: #0B141F; margin: 4px 0 16px; }
+
+            .p-toprow { width: 100%; margin-bottom: 18px; }
+            .p-stamp-cell { text-align: right; vertical-align: middle; }
+            .p-label { font-size: 8.5px; letter-spacing: 0.1em; color: #8a90a3; font-weight: 700; margin-bottom: 3px; }
+            .p-track-code { font-family: 'IBM Plex Mono', monospace; font-size: 20px; font-weight: 600; margin-bottom: 6px; }
+            .p-barcode { display: flex; align-items: flex-end; gap: 2px; height: 22px; }
+            .p-barcode span { display: block; height: 100%; background: #0B141F; }
+
+            .p-stamp {
+                display: inline-block; border: 2px solid #0B141F; border-radius: 4px;
+                padding: 7px 16px; font-family: 'Space Grotesk', sans-serif; font-weight: 700;
+                font-size: 11.5px; letter-spacing: 0.04em; transform: rotate(-3deg);
+            }
+
+            .p-info-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; page-break-inside: avoid; }
+            .p-info-table th {
+                text-align: left; background: #f0f2f7; font-size: 9.5px; letter-spacing: 0.08em;
+                font-weight: 700; color: #43474e; padding: 6px 10px; border: 1px solid #d7dbe4;
+            }
+            .p-info-label { width: 15%; font-size: 9.5px; color: #6b7280; padding: 6px 10px; border: 1px solid #d7dbe4; background: #fafbfd; }
+            .p-info-value { font-weight: 600; padding: 6px 10px; border: 1px solid #d7dbe4; }
+
+            .p-section-title { font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 11.5px; letter-spacing: 0.04em; margin: 4px 0 8px; }
+
+            .p-move-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; page-break-inside: avoid; }
+            .p-move-table th {
+                text-align: left; font-size: 9.5px; letter-spacing: 0.06em; color: #43474e;
+                padding: 6px 10px; border-bottom: 2px solid #0B141F;
+            }
+            .p-move-table td { padding: 6px 10px; border-bottom: 1px solid #e5e7eb; font-size: 11px; }
+            .p-mono { font-family: 'IBM Plex Mono', monospace; white-space: nowrap; color: #6b7280; }
+
+            .p-sign-table { width: 100%; margin-top: 26px; page-break-inside: avoid; }
+            .p-sign-table td { width: 50%; padding-right: 30px; }
+            .p-sign-label { font-size: 9.5px; color: #6b7280; margin-bottom: 24px; }
+            .p-sign-line { border-top: 1px solid #16202c; }
+
+            .p-footer-line { border-top: 1px solid #d7dbe4; margin-top: 24px; }
+            .p-footer-text { font-size: 8.5px; color: #9ca3af; margin-top: 6px; }
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        document.getElementById('copyBtn')?.addEventListener('click', function () {
+            try { navigator.clipboard.writeText(this.dataset.code); } catch (e) { }
+            const icon = this.querySelector('span');
+            icon.textContent = 'check';
+            setTimeout(() => { icon.textContent = 'content_copy'; }, 1400);
+        });
+        document.getElementById('printBtn')?.addEventListener('click', () => window.print());
+    </script>
+}

@@ -1,0 +1,101 @@
+﻿@model List<CargoTrack.Dto.Dtos.BranchDtos.ResultBranchDto>
+@{
+    ViewData["Title"] = "Şubeler";
+    Layout = "_AdminLayout";
+    var cityCount = Model.Select(b => b.CityId).Distinct().Count();
+}
+
+@if (TempData["SuccessMessage"] is not null)
+{
+    <div class="bg-success text-white px-5 py-3 rounded-xl mb-6 text-sm font-medium flex items-center gap-2">
+        <span class="material-symbols-outlined text-lg">check_circle</span>
+        @TempData["SuccessMessage"]
+    </div>
+}
+@if (TempData["ErrorMessage"] is not null)
+{
+    <div class="bg-error text-white px-5 py-3 rounded-xl mb-6 text-sm font-medium flex items-center gap-2">
+        <span class="material-symbols-outlined text-lg">error</span>
+        @TempData["ErrorMessage"]
+    </div>
+}
+
+<div class="flex items-center justify-between mb-6">
+    <div class="flex gap-4">
+        <div class="bg-white rounded-2xl border border-outline-variant px-5 py-3 flex items-center gap-3">
+            <span class="w-9 h-9 rounded-lg bg-primary-container/10 flex items-center justify-center">
+                <span class="material-symbols-outlined text-primary-container text-lg">storefront</span>
+            </span>
+            <div>
+                <p class="font-display font-bold text-lg leading-none">@Model.Count</p>
+                <p class="text-xs text-on-surface-variant mt-0.5">Toplam Şube</p>
+            </div>
+        </div>
+        <div class="bg-white rounded-2xl border border-outline-variant px-5 py-3 flex items-center gap-3">
+            <span class="w-9 h-9 rounded-lg bg-secondary-container/10 flex items-center justify-center">
+                <span class="material-symbols-outlined text-secondary text-lg">location_city</span>
+            </span>
+            <div>
+                <p class="font-display font-bold text-lg leading-none">@cityCount</p>
+                <p class="text-xs text-on-surface-variant mt-0.5">Farklı Şehir</p>
+            </div>
+        </div>
+    </div>
+
+    <a href="@Url.Action("Create")" class="flex items-center gap-2 bg-primary-container text-white px-5 py-3 rounded-xl font-bold text-sm hover:bg-primary-container-light transition-colors">
+        <span class="material-symbols-outlined text-lg">add</span>
+        Yeni Şube Ekle
+    </a>
+</div>
+
+<div class="bg-white rounded-2xl border border-outline-variant overflow-hidden">
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b-2 border-primary-container/10">
+                <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">Şube Adı</th>
+                <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">Şehir</th>
+                <th class="px-6 py-4"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-outline-variant/70">
+            @foreach (var branch in Model.OrderBy(b => b.City?.Name).ThenBy(b => b.Name))
+            {
+                <tr class="hover:bg-surface-container-low transition-colors">
+                    <td class="px-6 py-3.5">
+                        <div class="flex items-center gap-3">
+                            <span class="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center">
+                                <span class="material-symbols-outlined text-primary-container text-lg">storefront</span>
+                            </span>
+                            <span class="font-semibold text-on-background">@branch.Name</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-3.5 text-on-surface-variant">@branch.City?.Name</td>
+                    <td class="px-6 py-3.5">
+                        <div class="flex items-center gap-1.5 justify-end">
+                            <a href="@Url.Action("Update", new { id = branch.Id })" title="Düzenle"
+                                   class="w-9 h-9 rounded-lg bg-surface-container hover:bg-secondary-container hover:text-white flex items-center justify-center transition-colors">
+                                <span class="material-symbols-outlined text-lg">edit</span>
+                            </a>
+                            <form asp-action="Delete" asp-route-id="@branch.Id" method="post"
+                                  onsubmit="return confirm('&quot;@branch.Name&quot; şubesini silmek istediğinize emin misiniz?');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" title="Sil"
+                                        class="w-9 h-9 rounded-lg bg-surface-container hover:bg-error hover:text-white flex items-center justify-center transition-colors">
+                                    <span class="material-symbols-outlined text-lg">delete</span>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (!Model.Any())
+    {
+        <div class="text-center py-16">
+            <span class="material-symbols-outlined text-outline-variant" style="font-size:44px">storefront</span>
+            <p class="font-bold text-on-background mt-3">Henüz şube eklenmemiş</p>
+        </div>
+    }
+</div>

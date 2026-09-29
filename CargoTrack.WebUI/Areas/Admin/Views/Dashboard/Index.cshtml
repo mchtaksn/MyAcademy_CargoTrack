@@ -1,0 +1,340 @@
+﻿@model CargoTrack.Dto.Dtos.DashboardDtos.DashboardDto
+@using System.Globalization
+@using System.Text.Json
+@using CargoTrack.WebUI.Extensions
+@{
+    ViewData["Title"] = "Performans";
+    Layout = "_AdminLayout";
+    var tr = new CultureInfo("tr-TR");
+
+    string HexFor(CargoTrack.Entity.Entities.Enums.CargoStatus s) => s switch
+    {
+        CargoTrack.Entity.Entities.Enums.CargoStatus.Received => "#001e3c",
+        CargoTrack.Entity.Entities.Enums.CargoStatus.InTransferCenter => "#6366f1",
+        CargoTrack.Entity.Entities.Enums.CargoStatus.DispatchedFromTransferCenter => "#3b82f6",
+        CargoTrack.Entity.Entities.Enums.CargoStatus.ArrivedAtDeliveryBranch => "#0d9488",
+        CargoTrack.Entity.Entities.Enums.CargoStatus.OutForDelivery => "#fd8b00",
+        CargoTrack.Entity.Entities.Enums.CargoStatus.Delivered => "#1b7a3d",
+        CargoTrack.Entity.Entities.Enums.CargoStatus.FailedDelivery => "#f43f5e",
+        CargoTrack.Entity.Entities.Enums.CargoStatus.InReturnProcess => "#ba1a1a",
+        CargoTrack.Entity.Entities.Enums.CargoStatus.ReturnedToSender => "#94a3b8",
+        _ => "#94a3b8"
+    };
+
+    var trafficLabels = Model.Last7DaysTraffic.Select(d => new[] { d.Date.ToString("ddd", tr), d.Date.ToString("d MMM", tr) }).ToList();
+    var trafficValues = Model.Last7DaysTraffic.Select(d => d.Count).ToList();
+
+    var statusLabels = Model.StatusDistribution.Select(s => s.Status.ToDisplayText()).ToList();
+    var statusValues = Model.StatusDistribution.Select(s => s.Count).ToList();
+    var statusColors = Model.StatusDistribution.Select(s => HexFor(s.Status)).ToList();
+
+    var jsonOpts = new JsonSerializerOptions { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
+    int deliveryRateRounded = (int)Math.Round(Model.DeliveryRatePercent);
+    int maxBranch = Model.TopBranches.Any() ? Math.Max(1, Model.TopBranches.Max(b => b.CargoCount)) : 1;
+    var totalStatusCount = Model.StatusDistribution.Sum(s => s.Count);
+}
+
+<!-- ============ HERO BAND ============ -->
+<div class="hero-band -mx-9 -mt-7 px-9 pt-6 pb-20 relative overflow-hidden" style="background:#001e3c;">
+    <div class="hero-glow w-96 h-96 bg-secondary-container/30 -top-20 -left-10"></div>
+    <div class="hero-glow w-96 h-96 bg-blue-500/20 top-10 right-0"></div>
+    <div class="hero-dots"></div>
+
+    <div class="relative z-10 grid lg:grid-cols-[1fr_auto] gap-10 items-center">
+        <div class="hero-fade">
+            <h2 class="font-display font-extrabold text-3xl sm:text-4xl text-white leading-tight mb-3">
+                Bugün <span class="text-secondary-container">@Model.TotalCargoCount gönderi</span> takip ediliyor.
+            </h2>
+            <p class="text-white/55 max-w-lg mb-6">
+                Sistem genelinde @Model.TotalBranchCount şube ve @Model.ActiveEmployeeCount aktif personel operasyonu sürdürüyor.
+                @if (Model.BusiestDay is not null)
+                {
+                    <text>Son 7 günde en yoğun gün <strong class="text-white">@Model.BusiestDay.Value.ToString("dddd", tr)</strong> oldu.</text>
+                }
+            </p>
+            <div class="flex flex-wrap gap-3">
+                @if (Model.BusiestDay is not null)
+                {
+                    <div class="insight-pill bg-white/10 backdrop-blur border border-white/10 rounded-xl px-4 py-3 flex items-center gap-3">
+                        <span class="material-symbols-outlined text-secondary-container">calendar_today</span>
+                        <div>
+                            <p class="text-[10px] text-white/40 uppercase tracking-wide">En Yoğun Gün</p>
+                            <p class="text-sm font-bold text-white">@Model.BusiestDay.Value.ToString("dddd", tr) · @Model.BusiestDayCount kargo</p>
+                        </div>
+                    </div>
+                }
+                @if (Model.BusiestBranchName is not null)
+                {
+                    <div class="insight-pill bg-white/10 backdrop-blur border border-white/10 rounded-xl px-4 py-3 flex items-center gap-3">
+                        <span class="material-symbols-outlined text-secondary-container">storefront</span>
+                        <div>
+                            <p class="text-[10px] text-white/40 uppercase tracking-wide">En Yoğun Şube</p>
+                            <p class="text-sm font-bold text-white">@Model.BusiestBranchName</p>
+                        </div>
+                    </div>
+                }
+                <div class="insight-pill bg-white/10 backdrop-blur border border-white/10 rounded-xl px-4 py-3 flex items-center gap-3">
+                    <span class="material-symbols-outlined text-secondary-container">trending_up</span>
+                    <div>
+                        <p class="text-[10px] text-white/40 uppercase tracking-wide">Günlük Ortalama</p>
+                        <p class="text-sm font-bold text-white">@Model.DailyAverage.ToString("0.#", tr) kargo</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hero-fade relative w-[180px] h-[130px]" style="animation-delay:.2s">
+            <canvas id="gaugeChart"></canvas>
+            <div class="absolute inset-0 flex flex-col items-center justify-end pb-2 pointer-events-none">
+                <p class="font-display font-extrabold text-3xl text-white leading-none">%@deliveryRateRounded</p>
+                <p class="text-[10px] text-white/50 mt-1">TESLİMAT ORANI</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============ KPI CARDS ============ -->
+<div class="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6 -mt-10 relative z-20">
+    <div class="pop kpi-card bg-white rounded-2xl border border-outline-variant p-5 shadow-[0_14px_30px_-20px_rgba(11,28,48,.4)]" style="animation-delay:.02s">
+        <div class="kpi-glow bg-primary-container"></div>
+        <span class="relative w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center mb-3">
+            <span class="material-symbols-outlined text-primary-container text-xl">inventory_2</span>
+        </span>
+        <p class="relative font-display font-extrabold text-3xl leading-none count" data-to="@Model.TotalCargoCount">0</p>
+        <p class="relative text-xs text-on-surface-variant mt-1.5 mb-2">Toplam Kargo</p>
+        <div class="spark-wrap"><canvas id="sparkTotal"></canvas></div>
+    </div>
+
+    <div class="pop kpi-card bg-white rounded-2xl border border-outline-variant p-5 shadow-[0_14px_30px_-20px_rgba(11,28,48,.4)]" style="animation-delay:.08s">
+        <div class="kpi-glow bg-secondary-container"></div>
+        <span class="relative w-10 h-10 rounded-xl bg-secondary-container/15 flex items-center justify-center mb-3">
+            <span class="material-symbols-outlined text-secondary text-xl">local_shipping</span>
+        </span>
+        <p class="relative font-display font-extrabold text-3xl leading-none count" data-to="@Model.ActiveCargoCount">0</p>
+        <p class="relative text-xs text-on-surface-variant mt-1.5 mb-2">Aktif Kargo</p>
+        <p class="relative text-[11px] text-on-surface-variant/60 pt-1.5">Toplamın %@(Model.TotalCargoCount == 0 ? 0 : Math.Round(Model.ActiveCargoCount * 100.0 / Model.TotalCargoCount))'i</p>
+    </div>
+
+    <div class="pop kpi-card bg-white rounded-2xl border border-outline-variant p-5 shadow-[0_14px_30px_-20px_rgba(11,28,48,.4)]" style="animation-delay:.14s">
+        <div class="kpi-glow bg-error"></div>
+        <span class="relative w-10 h-10 rounded-xl bg-error-container flex items-center justify-center mb-3">
+            <span class="material-symbols-outlined text-on-error-container text-xl">schedule</span>
+        </span>
+        <p class="relative font-display font-extrabold text-3xl leading-none count" data-to="@Model.DelayedCargoCount">0</p>
+        <p class="relative text-xs text-on-surface-variant mt-1.5 mb-2">Geciken Kargo</p>
+        <p class="relative text-[11px] @(Model.DelayedCargoCount > 0 ? "text-error font-semibold" : "text-on-surface-variant/60") pt-1.5">
+            @(Model.DelayedCargoCount > 0 ? "Takip gerekiyor" : "Sorun yok")
+        </p>
+    </div>
+
+    <div class="pop kpi-card bg-white rounded-2xl border border-outline-variant p-5 shadow-[0_14px_30px_-20px_rgba(11,28,48,.4)]" style="animation-delay:.2s">
+        <div class="kpi-glow bg-success"></div>
+        <span class="relative w-10 h-10 rounded-xl bg-success-container flex items-center justify-center mb-3">
+            <span class="material-symbols-outlined text-success text-xl">task_alt</span>
+        </span>
+        <p class="relative font-display font-extrabold text-3xl leading-none"><span class="count" data-to="@deliveryRateRounded">0</span><span class="text-lg">%</span></p>
+        <p class="relative text-xs text-on-surface-variant mt-1.5 mb-2">Teslimat Oranı</p>
+        <p class="relative text-[11px] text-on-surface-variant/60 pt-1.5">@Model.DeliveredCargoCount / @Model.TotalCargoCount teslim edildi</p>
+    </div>
+
+    <div class="pop kpi-card bg-white rounded-2xl border border-outline-variant p-5 shadow-[0_14px_30px_-20px_rgba(11,28,48,.4)]" style="animation-delay:.26s">
+        <div class="kpi-glow bg-primary-container"></div>
+        <span class="relative w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center mb-3">
+            <span class="material-symbols-outlined text-primary-container text-xl">storefront</span>
+        </span>
+        <p class="relative font-display font-extrabold text-3xl leading-none count" data-to="@Model.TotalBranchCount">0</p>
+        <p class="relative text-xs text-on-surface-variant mt-1.5 mb-2">Toplam Şube</p>
+        <p class="relative text-[11px] text-on-surface-variant/60 pt-1.5 flex items-center gap-1">
+            <span class="material-symbols-outlined text-[14px]">location_on</span>@Model.DistinctCityCount farklı şehir
+        </p>
+    </div>
+
+    <div class="pop kpi-card bg-white rounded-2xl border border-outline-variant p-5 shadow-[0_14px_30px_-20px_rgba(11,28,48,.4)]" style="animation-delay:.32s">
+        <div class="kpi-glow bg-secondary-container"></div>
+        <span class="relative w-10 h-10 rounded-xl bg-secondary-container/15 flex items-center justify-center mb-3">
+            <span class="material-symbols-outlined text-secondary text-xl">groups</span>
+        </span>
+        <p class="relative font-display font-extrabold text-3xl leading-none count" data-to="@Model.ActiveEmployeeCount">0</p>
+        <p class="relative text-xs text-on-surface-variant mt-1.5 mb-2">Aktif Personel</p>
+        <p class="relative text-[11px] text-on-surface-variant/60 pt-1.5">@Model.TotalEmployeeCount kayıtlı, @Model.ActiveEmployeeCount aktif</p>
+    </div>
+</div>
+
+<!-- ============ CHARTS ============ -->
+<div class="grid lg:grid-cols-5 gap-6 mb-6">
+    <div class="pop lg:col-span-3 bg-white rounded-2xl border border-outline-variant p-6" style="animation-delay:.38s">
+        <div class="flex items-center justify-between mb-5">
+            <h2 class="font-extrabold text-on-background">Son 7 Günlük Trafik</h2>
+            <span class="text-xs text-on-surface-variant bg-surface-container-low px-2.5 py-1 rounded-full">Bu hafta</span>
+        </div>
+        <div style="height:260px;"><canvas id="trafficChart"></canvas></div>
+    </div>
+
+    <div class="pop lg:col-span-2 bg-white rounded-2xl border border-outline-variant p-6" style="animation-delay:.44s">
+        <h2 class="font-extrabold text-on-background mb-5">Durum Dağılımı</h2>
+        <div class="relative" style="height:200px;">
+            <canvas id="statusChart"></canvas>
+            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <p class="font-display font-extrabold text-2xl leading-none">@totalStatusCount</p>
+                <p class="text-[10px] text-on-surface-variant">TOPLAM</p>
+            </div>
+        </div>
+        <div class="grid grid-cols-2 gap-x-3 gap-y-1.5 mt-5 text-xs">
+            @for (int i = 0; i < Model.StatusDistribution.Count; i++)
+            {
+                var s = Model.StatusDistribution[i];
+                <div class="flex items-center gap-1.5">
+                    <span class="w-2.5 h-2.5 rounded-full shrink-0" style="background:@HexFor(s.Status)"></span>
+                    <span class="text-on-surface-variant truncate">@s.Status.ToDisplayText()</span>
+                    <span class="font-bold text-on-background ml-auto">@s.Count</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- ============ TOP BRANCHES ============ -->
+<div class="pop bg-white rounded-2xl border border-outline-variant p-6" style="animation-delay:.5s">
+    <h2 class="font-extrabold text-on-background mb-6">En Yoğun 5 Şube</h2>
+
+    @if (!Model.TopBranches.Any())
+    {
+        <p class="text-sm text-on-surface-variant">Henüz yeterli veri yok.</p>
+    }
+    else
+    {
+        <div class="space-y-4">
+            @for (int i = 0; i < Model.TopBranches.Count; i++)
+            {
+                var b = Model.TopBranches[i];
+                var pct = Math.Max(4, (int)(b.CargoCount * 100.0 / maxBranch));
+                var medalClass = i == 0 ? "medal-1" : i == 1 ? "medal-2" : i == 2 ? "medal-3" : "medal-rest";
+                <div class="flex items-center gap-4">
+                    <span class="medal @medalClass">@(i + 1)</span>
+                    <div class="flex-1">
+                        <div class="flex items-center justify-between text-sm mb-1.5">
+                            <span class="font-semibold text-on-background">@b.BranchName</span>
+                            <span class="font-mono text-on-surface-variant">@b.CargoCount kargo</span>
+                        </div>
+                        <div class="h-2.5 bg-surface-container-low rounded-full overflow-hidden">
+                            <div class="h-full rounded-full bar-fill" style="width:@(pct)%; background:linear-gradient(90deg,#001e3c,#fd8b00); animation-delay:@((0.6 + i * 0.08).ToString("0.00", CultureInfo.InvariantCulture))s"></div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@section Styles {
+    <style>
+        .pop { animation: pop .55s cubic-bezier(.2,.8,.2,1) both; }
+        @@keyframes pop { from { opacity:0; transform:translateY(12px);} }
+
+        .kpi-card { transition: transform .18s ease, box-shadow .18s ease; position:relative; overflow:hidden; }
+        .kpi-card:hover { transform: translateY(-3px); }
+        .kpi-glow { position:absolute; width:90px; height:90px; border-radius:9999px; filter:blur(30px); opacity:.35; top:-20px; right:-20px; }
+
+        .medal { width:26px; height:26px; border-radius:9999px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:12px; flex-shrink:0; }
+        .medal-1 { background:#fbbf24; color:#78350f; }
+        .medal-2 { background:#cbd5e1; color:#334155; }
+        .medal-3 { background:#fdba74; color:#7c2d12; }
+        .medal-rest { background:#eef2fa; color:#53586a; }
+
+        .bar-fill { transform-origin:left; animation: growBar 1.1s cubic-bezier(.2,.8,.2,1) both; }
+        @@keyframes growBar { from { transform:scaleX(0);} }
+
+        .hero-glow { position:absolute; border-radius:9999px; filter:blur(70px); pointer-events:none; }
+        .hero-dots { position:absolute; inset:0; opacity:.5; background-image:radial-gradient(rgba(253,139,0,.16) 1px, transparent 1px); background-size:24px 24px; }
+        .hero-fade { opacity:0; transform:translateY(12px); animation: heroFade .7s cubic-bezier(.2,.8,.2,1) forwards; }
+        @@keyframes heroFade { to { opacity:1; transform:translateY(0); } }
+
+        .insight-pill { transition: transform .15s ease; }
+        .insight-pill:hover { transform: translateY(-2px); }
+        .spark-wrap { height:28px; }
+    </style>
+}
+
+@section Scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <script>
+        document.querySelectorAll('.count').forEach(el => {
+            const to = +el.dataset.to;
+            const dur = 1100;
+            const start = performance.now();
+            const tick = t => {
+                const p = Math.min((t - start) / dur, 1);
+                const eased = 1 - Math.pow(1 - p, 3);
+                el.textContent = Math.round(to * eased);
+                if (p < 1) requestAnimationFrame(tick); else el.textContent = to;
+            };
+            requestAnimationFrame(tick);
+        });
+
+        const navy = '#001e3c', orange = '#fd8b00';
+
+        new Chart(document.getElementById('gaugeChart'), {
+            type: 'doughnut',
+            data: { datasets: [{ data: [@deliveryRateRounded, @(100 - deliveryRateRounded)], backgroundColor: [orange, 'rgba(255,255,255,0.12)'], borderWidth: 0, circumference: 180, rotation: 270 }] },
+            options: { responsive: true, maintainAspectRatio: false, cutout: '78%',
+                animation: { animateRotate: true, duration: 1400, easing: 'easeOutCubic' },
+                plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+        });
+
+        new Chart(document.getElementById('sparkTotal'), {
+            type: 'line',
+            data: {
+                labels: @Html.Raw(JsonSerializer.Serialize(trafficValues.Select((_, i) => i), jsonOpts)),
+                datasets: [{ data: @Html.Raw(JsonSerializer.Serialize(trafficValues, jsonOpts)), borderColor: navy, borderWidth: 2, pointRadius: 0, tension: 0.4, fill: false }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, animation: { duration: 900 },
+                plugins: { legend: { display:false }, tooltip: { enabled:false } },
+                scales: { x: { display:false }, y: { display:false } } }
+        });
+
+        const trafficCtx = document.getElementById('trafficChart');
+        const gradient = trafficCtx.getContext('2d').createLinearGradient(0, 0, 0, 260);
+        gradient.addColorStop(0, 'rgba(0,30,60,0.25)');
+        gradient.addColorStop(1, 'rgba(0,30,60,0)');
+
+        new Chart(trafficCtx, {
+            type: 'line',
+            data: {
+                labels: @Html.Raw(JsonSerializer.Serialize(trafficLabels, jsonOpts)),
+                datasets: [{
+                    data: @Html.Raw(JsonSerializer.Serialize(trafficValues, jsonOpts)),
+                    borderColor: navy, borderWidth: 3, pointRadius: 5, pointBackgroundColor: '#fff',
+                    pointBorderColor: navy, pointBorderWidth: 2.5, pointHoverRadius: 7,
+                    tension: 0.4, fill: true, backgroundColor: gradient
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                animation: { duration: 1400, easing: 'easeOutCubic' },
+                plugins: { legend: { display: false }, tooltip: {
+                    backgroundColor: navy, padding: 10, cornerRadius: 8,
+                    bodyFont: { family: 'Hanken Grotesk', size: 13, weight: 'bold' },
+                    callbacks: { label: (ctx) => ctx.parsed.y + ' kargo' }
+                }},
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: '#53586a', font: { size: 11, family: 'Hanken Grotesk' } } },
+                    y: { beginAtZero: true, ticks: { precision: 0, color: '#53586a', font: { size: 11 } }, grid: { color: '#eef2fa' } }
+                }
+            }
+        });
+
+        new Chart(document.getElementById('statusChart'), {
+            type: 'doughnut',
+            data: {
+                labels: @Html.Raw(JsonSerializer.Serialize(statusLabels, jsonOpts)),
+                datasets: [{ data: @Html.Raw(JsonSerializer.Serialize(statusValues, jsonOpts)), backgroundColor: @Html.Raw(JsonSerializer.Serialize(statusColors, jsonOpts)), borderWidth: 3, borderColor: '#fff', hoverOffset: 8 }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '72%',
+                animation: { animateRotate: true, duration: 1200 },
+                plugins: { legend: { display: false }, tooltip: { backgroundColor: navy, padding: 10, cornerRadius: 8, bodyFont: { family: 'Hanken Grotesk', weight: 'bold' } } }
+            }
+        });
+    </script>
+}

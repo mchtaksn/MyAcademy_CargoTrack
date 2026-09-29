@@ -1,0 +1,67 @@
+﻿@model List<CargoTrack.Dto.Dtos.PricingRuleDtos.ResultPricingRuleDto>
+@using CargoTrack.WebUI.Extensions
+@using CargoTrack.Entity.Entities.Enums
+@{
+    ViewData["Title"] = "Fiyat Kuralları";
+    Layout = "_AdminLayout";
+
+    string IconFor(CargoType t) => t switch
+    {
+        CargoType.Standard => "inventory_2",
+        CargoType.Urgent => "bolt",
+        CargoType.Fragile => "warning",
+        CargoType.Heavy => "fitness_center",
+        _ => "package_2"
+    };
+}
+
+@if (TempData["SuccessMessage"] is not null)
+{
+    <div class="bg-success text-white px-5 py-3 rounded-xl mb-6 text-sm font-medium flex items-center gap-2">
+        <span class="material-symbols-outlined text-lg">check_circle</span>
+        @TempData["SuccessMessage"]
+    </div>
+}
+
+<div class="bg-white rounded-2xl border border-outline-variant p-5 mb-6 flex items-start gap-3">
+    <span class="material-symbols-outlined text-secondary mt-0.5">info</span>
+    <p class="text-sm text-on-surface-variant leading-relaxed">
+        Fiyat = (Ağırlık veya Desi'den büyük olanı) × Birim Fiyat + Şehir Ücreti.
+        Her gönderi tipi için ayrı birim fiyat ve şehir içi/şehirler arası ücret tanımlanır.
+    </p>
+</div>
+
+<div class="grid sm:grid-cols-2 gap-5">
+    @foreach (var rule in Model.OrderBy(r => r.CargoType))
+    {
+        <div class="bg-white rounded-2xl border border-outline-variant p-6">
+            <div class="flex items-center justify-between mb-5">
+                <div class="flex items-center gap-3">
+                    <span class="w-11 h-11 rounded-xl bg-primary-container/10 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-primary-container">@IconFor(rule.CargoType)</span>
+                    </span>
+                    <p class="font-extrabold text-on-background">@rule.CargoType.ToDisplayText()</p>
+                </div>
+                <a href="@Url.Action("Update", new { id = rule.Id })" title="Düzenle"
+                       class="w-9 h-9 rounded-lg bg-surface-container hover:bg-secondary-container hover:text-white flex items-center justify-center transition-colors">
+                    <span class="material-symbols-outlined text-lg">edit</span>
+                </a>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+                <div class="bg-surface-container-low rounded-xl p-3.5 text-center">
+                    <p class="text-[10px] font-bold tracking-wide text-on-surface-variant/60 uppercase mb-1">Birim Fiyat</p>
+                    <p class="font-bold text-on-background">₺@rule.PricePerUnit.ToString("0.00")</p>
+                </div>
+                <div class="bg-surface-container-low rounded-xl p-3.5 text-center">
+                    <p class="text-[10px] font-bold tracking-wide text-on-surface-variant/60 uppercase mb-1">Şehir İçi</p>
+                    <p class="font-bold text-on-background">₺@rule.SameCityFee.ToString("0.00")</p>
+                </div>
+                <div class="bg-surface-container-low rounded-xl p-3.5 text-center">
+                    <p class="text-[10px] font-bold tracking-wide text-on-surface-variant/60 uppercase mb-1">Şehirler Arası</p>
+                    <p class="font-bold text-on-background">₺@rule.DifferentCityFee.ToString("0.00")</p>
+                </div>
+            </div>
+        </div>
+    }
+</div>

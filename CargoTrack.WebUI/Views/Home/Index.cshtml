@@ -1,0 +1,153 @@
+﻿@{
+    ViewData["Title"] = "Ana Sayfa";
+    Layout = "_PublicLayout";
+    int branchCount = ViewBag.BranchCount;
+    int cityCount = ViewBag.CityCount;
+    double deliveryRate = ViewBag.DeliveryRatePercent;
+}
+
+<!-- ============ HERO ============ -->
+<div class="relative bg-ink text-paper overflow-hidden">
+    <div class="glow w-[26rem] h-[26rem] bg-amber/20 -top-32 -left-24"></div>
+    <div class="glow w-[30rem] h-[30rem] bg-teal/20 -bottom-40 right-0"></div>
+    <div class="absolute inset-0 blueprint opacity-50"></div>
+
+    <section class="relative z-10 max-w-6xl mx-auto px-6 pt-20 pb-28 text-center">
+        <span class="stamp text-amber rise mx-auto" style="animation-delay:.05s">
+            <span class="material-symbols-outlined text-sm">local_shipping</span>
+            Türkiye genelinde hizmet
+        </span>
+
+        <h1 class="rise font-display font-bold text-4xl sm:text-6xl leading-[1.05] tracking-tight mt-6 mb-6 max-w-3xl mx-auto" style="animation-delay:.12s">
+            Gönderiniz nereye giderse gitsin,<br />
+            <span class="text-paper/50">biz yanınızdayız.</span>
+        </h1>
+
+        <p class="rise text-lg text-paper/60 max-w-xl mx-auto mb-10" style="animation-delay:.2s">
+            Şube ağımız, kod doğrulamalı teslimat sistemimiz ve gerçek zamanlı takip altyapımızla
+            gönderileriniz güvenle elden ele ulaşır.
+        </p>
+
+        <div class="rise flex flex-col sm:flex-row items-center justify-center gap-3" style="animation-delay:.28s">
+            <a href="@Url.Action("Track", "Cargo")"
+                   class="flex items-center gap-2 bg-amber text-ink rounded-lg px-7 py-3.5 font-display font-semibold hover:bg-paper transition-colors">
+                <span class="material-symbols-outlined text-lg">search</span>
+                Kargomu Takip Et
+            </a>
+            <a href="@Url.Action("Login", "Account")"
+                   class="flex items-center gap-2 border border-paper/20 text-paper/80 rounded-lg px-7 py-3.5 font-display font-semibold hover:text-amber hover:border-amber/50 transition-colors">
+                Hesabıma Giriş Yap
+                <span class="material-symbols-outlined text-lg">arrow_forward</span>
+            </a>
+        </div>
+    </section>
+    <div class="hazard"></div>
+</div>
+
+<!-- ============ STATS (real data) ============ -->
+<section class="bg-paper">
+    <div class="max-w-6xl mx-auto px-6 py-16 grid grid-cols-3 divide-x divide-ink/10 text-center">
+        <div>
+            <p class="font-display font-bold text-4xl">@branchCount</p>
+            <p class="text-sm text-ink/50 mt-1">Şube</p>
+        </div>
+        <div>
+            <p class="font-display font-bold text-4xl">@cityCount</p>
+            <p class="text-sm text-ink/50 mt-1">Şehir</p>
+        </div>
+        <div>
+            <p class="font-display font-bold text-4xl text-teal">%@deliveryRate.ToString("0")</p>
+            <p class="text-sm text-ink/50 mt-1">Teslimat Oranı</p>
+        </div>
+    </div>
+</section>
+
+<!-- ============ SERVICES ============ -->
+<section class="bg-paper border-t border-ink/10">
+    <div class="max-w-6xl mx-auto px-6 py-24">
+        <div class="max-w-lg mb-14">
+            <span class="text-sm font-medium text-teal">Hizmetlerimiz</span>
+            <h2 class="font-display font-semibold text-3xl mt-2">Her gönderi tipine uygun çözüm</h2>
+            <p class="text-ink/55 mt-3 leading-relaxed">
+                İster günlük bir paket, ister acil bir belge olsun — ihtiyacınıza uygun gönderi tipini seçin.
+            </p>
+        </div>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div class="bg-white rounded-2xl border border-ink/10 p-6">
+                <div class="w-11 h-11 rounded-xl bg-ink flex items-center justify-center mb-5">
+                    <span class="material-symbols-outlined text-paper">inventory_2</span>
+                </div>
+                <p class="font-display font-semibold mb-1.5">Standart Gönderi</p>
+                <p class="text-sm text-ink/55 leading-relaxed">Günlük kargolarınız için ekonomik ve güvenilir teslimat.</p>
+            </div>
+            <div class="bg-white rounded-2xl border border-ink/10 p-6">
+                <div class="w-11 h-11 rounded-xl bg-amber flex items-center justify-center mb-5">
+                    <span class="material-symbols-outlined text-ink">bolt</span>
+                </div>
+                <p class="font-display font-semibold mb-1.5">Acil Gönderi</p>
+                <p class="text-sm text-ink/55 leading-relaxed">Zamana karşı yarıştığınız gönderiler en hızlı rotayla ulaşır.</p>
+            </div>
+            <div class="bg-white rounded-2xl border border-ink/10 p-6">
+                <div class="w-11 h-11 rounded-xl bg-teal flex items-center justify-center mb-5">
+                    <span class="material-symbols-outlined text-paper">warning</span>
+                </div>
+                <p class="font-display font-semibold mb-1.5">Kırılabilir Gönderi</p>
+                <p class="text-sm text-ink/55 leading-relaxed">Özel paketleme ve dikkatli elleçleme ile hassas ürünleriniz güvende.</p>
+            </div>
+            <div class="bg-white rounded-2xl border border-ink/10 p-6">
+                <div class="w-11 h-11 rounded-xl bg-rust flex items-center justify-center mb-5">
+                    <span class="material-symbols-outlined text-paper">fitness_center</span>
+                </div>
+                <p class="font-display font-semibold mb-1.5">Ağır Gönderi</p>
+                <p class="text-sm text-ink/55 leading-relaxed">Büyük ve ağır paketleriniz için özel taşıma çözümleri.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ WHY CARGOTRACK ============ -->
+<section class="bg-ink text-paper">
+    <div class="max-w-6xl mx-auto px-6 py-24">
+        <div class="max-w-lg mb-14">
+            <span class="text-sm font-medium text-amber">Neden CargoTrack</span>
+            <h2 class="font-display font-semibold text-3xl mt-2">Şeffaflık ve güven üzerine kurulu</h2>
+        </div>
+
+        <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div>
+                <span class="material-symbols-outlined text-amber text-3xl mb-4 block">location_on</span>
+                <p class="font-display font-semibold mb-1.5">Geniş Şube Ağı</p>
+                <p class="text-sm text-paper/55 leading-relaxed">Ülke genelinde yayılan şubelerimizle gönderiniz her zaman yakınınızda.</p>
+            </div>
+            <div>
+                <span class="material-symbols-outlined text-amber text-3xl mb-4 block">verified_user</span>
+                <p class="font-display font-semibold mb-1.5">Kod Doğrulamalı Teslimat</p>
+                <p class="text-sm text-paper/55 leading-relaxed">Her teslimat, alıcıya özel bir kodla doğrulanır — yanlış ellere geçmez.</p>
+            </div>
+            <div>
+                <span class="material-symbols-outlined text-amber text-3xl mb-4 block">schedule</span>
+                <p class="font-display font-semibold mb-1.5">Gerçek Zamanlı Takip</p>
+                <p class="text-sm text-paper/55 leading-relaxed">Gönderinizin nerede olduğunu 7/24 anlık olarak görüntüleyin.</p>
+            </div>
+            <div>
+                <span class="material-symbols-outlined text-amber text-3xl mb-4 block">payments</span>
+                <p class="font-display font-semibold mb-1.5">Şeffaf Fiyatlandırma</p>
+                <p class="text-sm text-paper/55 leading-relaxed">Ağırlık, desi ve mesafeye dayalı net bir ücretlendirme, sürpriz yok.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section class="bg-paper">
+    <div class="max-w-4xl mx-auto px-6 py-20 text-center">
+        <h2 class="font-display font-bold text-3xl sm:text-4xl mb-4">Gönderinizi hemen sorgulayın</h2>
+        <p class="text-ink/55 mb-8 max-w-md mx-auto">Takip numaranızı girin, gönderinizin güncel durumunu saniyeler içinde öğrenin.</p>
+        <a href="@Url.Action("Track", "Cargo")"
+               class="inline-flex items-center gap-2 bg-ink text-paper rounded-lg px-8 py-3.5 font-display font-semibold hover:bg-teal transition-colors">
+            <span class="material-symbols-outlined text-lg">search</span>
+            Kargo Takip Sayfasına Git
+        </a>
+    </div>
+</section>

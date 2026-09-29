@@ -1,0 +1,169 @@
+﻿@model List<CargoTrack.Entity.Entities.AppUser>
+@{
+    ViewData["Title"] = "Kullanıcılar";
+    Layout = "_AdminLayout";
+    var userRoles = (Dictionary<Guid, string>)ViewBag.UserRoles;
+    string currentRole = ViewBag.CurrentRole;
+    string? currentSearch = ViewBag.CurrentSearch;
+
+    string RoleBadge(string role) => role switch
+    {
+        "Admin" => "bg-primary-container/10 text-primary-container",
+        "Manager" => "bg-secondary-container/15 text-secondary",
+        "User" => "bg-surface-container text-on-surface-variant",
+        _ => "bg-surface-container text-on-surface-variant"
+    };
+
+    string ChipClass(string key) => currentRole == key
+        ? "bg-primary-container text-white border-primary-container"
+        : "bg-white text-on-background border-outline-variant hover:bg-surface-container-low";
+}
+
+@if (TempData["SuccessMessage"] is not null)
+{
+    <div class="bg-success text-white px-5 py-3 rounded-xl mb-6 text-sm font-medium flex items-center gap-2">
+        <span class="material-symbols-outlined text-lg">check_circle</span>
+        @TempData["SuccessMessage"]
+    </div>
+}
+@if (TempData["ErrorMessage"] is not null)
+{
+    <div class="bg-error text-white px-5 py-3 rounded-xl mb-6 text-sm font-medium flex items-center gap-2">
+        <span class="material-symbols-outlined text-lg">error</span>
+        @TempData["ErrorMessage"]
+    </div>
+}
+
+<div class="flex items-center gap-4 mb-6">
+    <div class="bg-white rounded-2xl border border-outline-variant px-5 py-3 flex items-center gap-3">
+        <span class="w-9 h-9 rounded-lg bg-primary-container/10 flex items-center justify-center">
+            <span class="material-symbols-outlined text-primary-container text-lg">group</span>
+        </span>
+        <div>
+            <p class="font-display font-bold text-lg leading-none">@ViewBag.AllCount</p>
+            <p class="text-xs text-on-surface-variant mt-0.5">Toplam Kullanıcı</p>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-outline-variant px-5 py-3 flex items-center gap-3">
+        <span class="w-9 h-9 rounded-lg bg-secondary-container/10 flex items-center justify-center">
+            <span class="material-symbols-outlined text-secondary text-lg">local_shipping</span>
+        </span>
+        <div>
+            <p class="font-display font-bold text-lg leading-none">@ViewBag.ManagerCount</p>
+            <p class="text-xs text-on-surface-variant mt-0.5">Şube Müdürü</p>
+        </div>
+    </div>
+    <div class="bg-white rounded-2xl border border-outline-variant px-5 py-3 flex items-center gap-3">
+        <span class="w-9 h-9 rounded-lg bg-surface-container flex items-center justify-center">
+            <span class="material-symbols-outlined text-on-surface-variant text-lg">person</span>
+        </span>
+        <div>
+            <p class="font-display font-bold text-lg leading-none">@ViewBag.UserCount</p>
+            <p class="text-xs text-on-surface-variant mt-0.5">Müşteri</p>
+        </div>
+    </div>
+</div>
+
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5">
+    <div class="flex flex-wrap gap-2" role="group" aria-label="Role göre filtrele">
+        <a href="@Url.Action("Index", new { role = "all", q = currentSearch })" class="border rounded-full px-4 py-2 text-sm font-semibold transition-colors @ChipClass("all")">Tümü</a>
+        <a href="@Url.Action("Index", new { role = "Admin", q = currentSearch })" class="border rounded-full px-4 py-2 text-sm font-semibold transition-colors @ChipClass("Admin")">Admin</a>
+        <a href="@Url.Action("Index", new { role = "Manager", q = currentSearch })" class="border rounded-full px-4 py-2 text-sm font-semibold transition-colors @ChipClass("Manager")">Şube Müdürü</a>
+        <a href="@Url.Action("Index", new { role = "User", q = currentSearch })" class="border rounded-full px-4 py-2 text-sm font-semibold transition-colors @ChipClass("User")">Müşteri</a>
+    </div>
+
+    <form method="get" action="@Url.Action("Index")" class="relative block lg:w-72">
+        <input type="hidden" name="role" value="@currentRole" />
+        <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-lg">search</span>
+        <input type="text" name="q" value="@currentSearch" placeholder="İsim veya e-posta ara"
+               class="w-full bg-white border border-outline-variant rounded-full pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-primary-container transition-colors" />
+    </form>
+</div>
+
+<div class="bg-white rounded-2xl border border-outline-variant overflow-hidden">
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b-2 border-primary-container/10">
+                <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">Ad Soyad</th>
+                <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">E-posta</th>
+                <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">Rol</th>
+                <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">Durum</th>
+                <th class="px-6 py-4"></th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-outline-variant/70">
+            @foreach (var user in Model)
+            {
+                var role = userRoles[user.Id];
+                <tr class="hover:bg-surface-container-low transition-colors">
+                    <td class="px-6 py-3.5">
+                        <div class="flex items-center gap-3">
+                            <span class="avatar w-9 h-9 text-xs bg-primary-container text-white">@($"{user.FirstName?[..1]}{user.LastName?[..1]}".ToUpper())</span>
+                            <span class="font-semibold text-on-background">@user.FirstName @user.LastName</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-3.5 text-on-surface-variant">@user.Email</td>
+                    <td class="px-6 py-3.5">
+                        <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-bold @RoleBadge(role)">
+                            @(role == "User" ? "Müşteri" : role == "Manager" ? "Şube Müdürü" : role)
+                        </span>
+                    </td>
+                    <td class="px-6 py-3.5">
+                        @if (user.IsActive)
+                        {
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-success-container text-success">
+                                <span class="material-symbols-outlined text-sm">check_circle</span>Aktif
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-error-container text-on-error-container">
+                                <span class="material-symbols-outlined text-sm">block</span>Pasif
+                            </span>
+                        }
+                    </td>
+                    <td class="px-6 py-3.5 text-right">
+                        @if (role == "User")
+                        {
+                            <form asp-action="ToggleActive" asp-route-id="@user.Id" method="post"
+                                  onsubmit="return confirm('Bu hesabın durumunu değiştirmek istediğinize emin misiniz?');">
+                                @Html.AntiForgeryToken()
+                                <button type="submit"
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors
+                                    @(user.IsActive ? "bg-error-container text-on-error-container hover:bg-error hover:text-white" : "bg-success-container text-success hover:bg-success hover:text-white")">
+                                    <span class="material-symbols-outlined text-sm">@(user.IsActive ? "block" : "check_circle")</span>
+                                    @(user.IsActive ? "Pasifleştir" : "Aktifleştir")
+                                </button>
+                            </form>
+                        }
+                        else
+                        {
+                            <span class="text-xs text-on-surface-variant/40 italic">Yönetim ekranından</span>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (!Model.Any())
+    {
+        <div class="text-center py-16">
+            <span class="material-symbols-outlined text-outline-variant" style="font-size:44px">group_off</span>
+            <p class="font-bold text-on-background mt-3">Bu filtreye uyan kullanıcı yok</p>
+        </div>
+    }
+</div>
+
+@section Styles {
+    <style>
+        .avatar {
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+    </style>
+}

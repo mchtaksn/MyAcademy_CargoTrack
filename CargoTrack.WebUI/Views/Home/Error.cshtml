@@ -1,0 +1,26 @@
+﻿@model CargoTrack.WebUI.Models.ErrorViewModel
+@{
+    ViewData["Title"] = "Bir Hata Oluştu";
+    Layout = "_PublicLayout";
+}
+
+<section class="bg-paper min-h-[70vh] flex items-center justify-center px-6">
+    <div class="max-w-lg text-center">
+        <div class="w-20 h-20 rounded-2xl bg-rust/10 border border-rust/20 flex items-center justify-center mx-auto mb-6">
+            <span class="material-symbols-outlined text-rust" style="font-size:36px;">error</span>
+        </div>
+        <h1 class="font-display font-bold text-2xl sm:text-3xl mb-3">Bir şeyler ters gitti</h1>
+        <p class="text-ink/60 mb-6">@Model.Message</p>
+
+        @if (Model.ShowRequestId)
+        {
+            <p class="font-mono text-xs text-ink/35 mb-8">Referans No: @Model.RequestId</p>
+        }
+
+        <a href="@Url.Action("Track", "Cargo")"
+               class="inline-flex items-center gap-2 bg-ink text-paper rounded-xl px-6 py-3 font-display font-semibold hover:bg-teal transition-colors">
+            <span class="material-symbols-outlined text-lg">home</span>
+            Ana Sayfaya Dön
+        </a>
+    </div>
+</section>

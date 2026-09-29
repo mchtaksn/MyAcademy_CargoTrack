@@ -1,0 +1,195 @@
+﻿@model CargoTrack.Dto.Dtos.CargoDtos.PagedCargoResultDto
+@using CargoTrack.WebUI.Extensions
+@{
+    ViewData["Title"] = "Kargolar";
+    Layout = "_AdminLayout";
+    string currentStatus = ViewBag.CurrentStatus ?? "all";
+    string? currentSearch = ViewBag.CurrentSearch;
+
+    string ChipClass(string key) => currentStatus == key
+        ? key switch
+        {
+            "all" => "bg-primary-container text-white border-primary-container",
+            "transit" => "bg-secondary-container text-white border-secondary-container",
+            "delivered" => "bg-success text-white border-success",
+            "problem" => "bg-error text-white border-error",
+            _ => ""
+        }
+        : "bg-white text-on-background border-outline-variant hover:bg-surface-container-low";
+
+    string CountBadgeClass(string key) => currentStatus == key ? "bg-white/25 text-white" : "bg-surface-container-high text-on-surface-variant";
+
+    string Initials(string? name) => string.IsNullOrWhiteSpace(name) ? "?" : name.ToInitials();
+
+    int windowStart = Math.Max(1, Model.Page - 2);
+    int windowEnd = Math.Min(Model.TotalPages, Model.Page + 2);
+}
+
+<div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5">
+    <div class="flex flex-wrap gap-2" role="group" aria-label="Duruma göre filtrele">
+        <a href="@Url.Action("Index", new { status = "all", q = currentSearch })"
+           class="flex items-center gap-2 border rounded-full pl-4 pr-2 py-2 text-sm font-semibold transition-colors @ChipClass("all")">
+            Tümü <span class="text-xs px-2 py-0.5 rounded-full font-bold @CountBadgeClass("all")">@Model.AllCount</span>
+        </a>
+        <a href="@Url.Action("Index", new { status = "transit", q = currentSearch })"
+           class="flex items-center gap-2 border rounded-full pl-4 pr-2 py-2 text-sm font-semibold transition-colors @ChipClass("transit")">
+            <span class="material-symbols-outlined text-base">local_shipping</span>
+            Yolda <span class="text-xs px-2 py-0.5 rounded-full font-bold @CountBadgeClass("transit")">@Model.TransitCount</span>
+        </a>
+        <a href="@Url.Action("Index", new { status = "delivered", q = currentSearch })"
+           class="flex items-center gap-2 border rounded-full pl-4 pr-2 py-2 text-sm font-semibold transition-colors @ChipClass("delivered")">
+            <span class="material-symbols-outlined text-base">task_alt</span>
+            Teslim Edildi <span class="text-xs px-2 py-0.5 rounded-full font-bold @CountBadgeClass("delivered")">@Model.DeliveredCount</span>
+        </a>
+        <a href="@Url.Action("Index", new { status = "problem", q = currentSearch })"
+           class="flex items-center gap-2 border rounded-full pl-4 pr-2 py-2 text-sm font-semibold transition-colors @ChipClass("problem")">
+            <span class="material-symbols-outlined text-base">report</span>
+            Sorunlu / İade <span class="text-xs px-2 py-0.5 rounded-full font-bold @CountBadgeClass("problem")">@Model.ProblemCount</span>
+        </a>
+    </div>
+
+    <form method="get" action="@Url.Action("Index")" class="relative block lg:w-80">
+        <input type="hidden" name="status" value="@currentStatus" />
+        <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-lg">search</span>
+        <input type="text" name="q" value="@currentSearch" placeholder="Takip no, şube veya isim ara"
+               class="w-full bg-white border border-outline-variant rounded-full pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-primary-container transition-colors" />
+    </form>
+</div>
+
+<div class="bg-white rounded-2xl border border-outline-variant overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm min-w-[980px]">
+            <thead>
+                <tr class="border-b-2 border-primary-container/10">
+                    <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">Takip No</th>
+                    <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">Gönderici → Alıcı</th>
+                    <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">Güzergah</th>
+                    <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">Durum</th>
+                    <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">Gönderim</th>
+                    <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">Tah. Teslimat</th>
+                    <th class="px-6 py-4"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-outline-variant/70">
+                @for (int i = 0; i < Model.Items.Count; i++)
+                {
+                    var cargo = Model.Items[i];
+                    <tr class="row-card" style="animation-delay:@(i * 0.03)s">
+                        <td class="px-6 py-4">
+                            <span class="font-mono font-bold text-on-background">@cargo.TrackCode</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-2">
+                                <span class="avatar bg-primary-container text-white">@Initials(cargo.SenderFullName)</span>
+                                <span class="text-on-surface-variant text-xs">@cargo.SenderFullName?.Split(' ').FirstOrDefault()</span>
+                                <span class="material-symbols-outlined text-outline text-base">arrow_forward</span>
+                                <span class="avatar bg-surface-container-high text-primary-container">@Initials(cargo.ReceiverFullName)</span>
+                                <span class="text-on-surface-variant text-xs">@cargo.ReceiverFullName?.Split(' ').FirstOrDefault()</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-2 text-on-background font-medium">
+                                <span>@cargo.OriginCityName</span>
+                                <span class="material-symbols-outlined text-outline text-sm">arrow_forward</span>
+                                <span>@cargo.DestinationCityName</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold @cargo.CargoStatus.ToAdminBadgeClass()">
+                                @if (cargo.CargoStatus.HasActivePulse())
+                                {
+                                    <span class="relative flex h-2 w-2">
+                                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full @cargo.CargoStatus.ToDotColor() opacity-75"></span>
+                                        <span class="relative inline-flex rounded-full h-2 w-2 @cargo.CargoStatus.ToDotColor()"></span>
+                                    </span>
+                                }
+                                <span class="material-symbols-outlined text-sm">@cargo.CargoStatus.ToIcon()</span>
+                                @cargo.CargoStatus.ToDisplayText()
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-on-surface-variant font-medium">@cargo.ShipmentDate.ToShortTr()</td>
+                        <td class="px-6 py-4">
+                            <span class="font-medium @(cargo.IsDelayed ? "text-error font-bold" : "text-on-surface-variant")">@cargo.EstimatedArrivalDate.ToShortTr()</span>
+                            @if (cargo.IsDelayed)
+                            {
+                                <span class="block text-[11px] text-error font-bold">Gecikmede</span>
+                            }
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-1.5 justify-end">
+                                <a href="@Url.Action("Detail", new { id = cargo.Id })" title="Detay"
+                                   class="action-btn w-9 h-9 rounded-lg bg-surface-container hover:bg-primary-container hover:text-white flex items-center justify-center transition-colors">
+                                    <span class="material-symbols-outlined text-lg">visibility</span>
+                                </a>
+                                <a href="@Url.Action("Update", new { id = cargo.Id })" title="Düzenle"
+                                   class="action-btn w-9 h-9 rounded-lg bg-surface-container hover:bg-secondary-container hover:text-white flex items-center justify-center transition-colors">
+                                    <span class="material-symbols-outlined text-lg">edit</span>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    @if (!Model.Items.Any())
+    {
+        <div class="text-center py-16">
+            <span class="material-symbols-outlined text-outline-variant" style="font-size:44px">search_off</span>
+            <p class="font-bold text-on-background mt-3">Bu filtreye uyan kargo yok</p>
+            <p class="text-sm text-on-surface-variant mt-1">Farklı bir durum seçin ya da aramayı temizleyin.</p>
+        </div>
+    }
+
+    @if (Model.TotalPages > 1)
+    {
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-3 px-6 py-4 border-t border-outline-variant bg-surface-container-low">
+            <p class="text-sm text-on-surface-variant">
+                @(((Model.Page - 1) * Model.PageSize) + 1)–@Math.Min(Model.Page * Model.PageSize, Model.TotalCount) / @Model.TotalCount kayıt
+            </p>
+            <div class="flex items-center gap-1.5">
+                <a href="@Url.Action("Index", new { status = currentStatus, q = currentSearch, page = Model.Page - 1 })"
+                   class="page-btn w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center @(Model.Page == 1 ? "pointer-events-none opacity-35" : "hover:bg-white")">
+                    <span class="material-symbols-outlined text-lg">chevron_left</span>
+                </a>
+
+                @if (windowStart > 1)
+                {
+                    <a href="@Url.Action("Index", new { status = currentStatus, q = currentSearch, page = 1 })" class="page-btn w-9 h-9 rounded-lg border border-outline-variant font-semibold flex items-center justify-center hover:bg-white">1</a>
+                    if (windowStart > 2) { <span class="px-1 text-on-surface-variant/40">…</span> }
+                }
+
+                @for (int p = windowStart; p <= windowEnd; p++)
+                {
+                    <a href="@Url.Action("Index", new { status = currentStatus, q = currentSearch, page = p })"
+                       class="page-btn w-9 h-9 rounded-lg border font-semibold flex items-center justify-center @(p == Model.Page ? "bg-primary-container text-white border-primary-container" : "border-outline-variant hover:bg-white")">
+                        @p
+                    </a>
+                }
+
+                @if (windowEnd < Model.TotalPages)
+                {
+                    if (windowEnd < Model.TotalPages - 1) { <span class="px-1 text-on-surface-variant/40">…</span> }
+                    <a href="@Url.Action("Index", new { status = currentStatus, q = currentSearch, page = Model.TotalPages })" class="page-btn w-9 h-9 rounded-lg border border-outline-variant font-semibold flex items-center justify-center hover:bg-white">@Model.TotalPages</a>
+                }
+
+                <a href="@Url.Action("Index", new { status = currentStatus, q = currentSearch, page = Model.Page + 1 })"
+                   class="page-btn w-9 h-9 rounded-lg border border-outline-variant flex items-center justify-center @(Model.Page == Model.TotalPages ? "pointer-events-none opacity-35" : "hover:bg-white")">
+                    <span class="material-symbols-outlined text-lg">chevron_right</span>
+                </a>
+            </div>
+        </div>
+    }
+</div>
+
+@section Styles {
+    <style>
+        .row-card { animation: rise .5s cubic-bezier(.2,.8,.2,1) both; transition: transform .16s ease, box-shadow .16s ease; }
+        @@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+        .row-card:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -16px rgba(11,28,48,.25); }
+        .row-card:hover .action-btn { opacity: 1; }
+        .action-btn { opacity: .55; }
+        .avatar { width: 30px; height: 30px; border-radius: 9999px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 11px; flex-shrink: 0; }
+    </style>
+}

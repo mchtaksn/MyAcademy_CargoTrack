@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+  </Folder>
+  <Project Path="CargoTrack.Business/CargoTrack.Business.csproj" />
+  <Project Path="CargoTrack.DataAccess/CargoTrack.DataAccess.csproj" />
+  <Project Path="CargoTrack.Dto/CargoTrack.Dto.csproj" />
+  <Project Path="CargoTrack.Entity/CargoTrack.Entity.csproj" />
+  <Project Path="CargoTrack.WebUI/CargoTrack.WebUI.csproj" />
+</Solution>

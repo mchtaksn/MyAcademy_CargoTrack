@@ -1,0 +1,15 @@
+﻿using CargoTrack.Dto.Dtos.AboutDtos;
+using FluentValidation;
+
+namespace CargoTrack.Business.Validators.Abouts
+{
+    public class CreateAboutValidator:AbstractValidator<CreateAboutDto>
+    {
+        public CreateAboutValidator()
+        {
+            RuleFor(x => x.Title).NotEmpty().WithMessage("Başlık boş bırakılamaz");
+            RuleFor(x => x.Description).NotEmpty().WithMessage("Açıklama boş bırakılamaz");
+            RuleFor(x => x.ImageUrl).NotEmpty().WithMessage("Görsel alanı boş bırakılamaz");
+        }
+    }
+}

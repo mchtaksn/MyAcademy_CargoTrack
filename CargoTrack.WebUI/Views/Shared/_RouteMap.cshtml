@@ -1,0 +1,51 @@
+﻿@model CargoTrack.WebUI.Models.RouteMapViewModel
+@using System.Globalization
+
+@if (Model.OriginLat is null || Model.OriginLng is null || Model.DestinationLat is null || Model.DestinationLng is null)
+{
+    <div class="bg-inkSoft border border-paper/10 rounded-xl p-6 text-center text-sm text-paper/40">
+        Bu güzergah için harita konumu bulunamadı.
+    </div>
+}
+else
+{
+    var ci = CultureInfo.InvariantCulture;
+    <div id="@Model.MapId" class="rounded-xl overflow-hidden" style="height:280px; width:100%;"></div>
+
+    <script>
+        (function () {
+            var map = L.map('@Model.MapId', { zoomControl: true, scrollWheelZoom: false });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+                maxZoom: 18
+            }).addTo(map);
+
+            var origin = [@Model.OriginLat.Value.ToString(ci), @Model.OriginLng.Value.ToString(ci)];
+            var destination = [@Model.DestinationLat.Value.ToString(ci), @Model.DestinationLng.Value.ToString(ci)];
+
+            var originIcon = L.divIcon({ className: '', html: '<div style="width:16px;height:16px;border-radius:50%;background:#111C2B;border:3px solid #2A8577;"></div>', iconSize: [16, 16] });
+            var destIcon = L.divIcon({ className: '', html: '<div style="width:16px;height:16px;border-radius:50%;background:#111C2B;border:3px solid #E8A93B;"></div>', iconSize: [16, 16] });
+
+            L.marker(origin, { icon: originIcon }).addTo(map).bindTooltip('@Model.OriginLabel');
+            L.marker(destination, { icon: destIcon }).addTo(map).bindTooltip('@Model.DestinationLabel');
+
+            var line = L.polyline([origin, destination], { color: '@Model.AccentHex', weight: 3, dashArray: '6 8' }).addTo(map);
+
+            var progress = @Model.ProgressPercent.ToString(ci) / 100;
+            var lat = origin[0] + (destination[0] - origin[0]) * progress;
+            var lng = origin[1] + (destination[1] - origin[1]) * progress;
+
+            var truckIcon = L.divIcon({
+                className: '',
+                html: '<div style="width:28px;height:28px;border-radius:50%;background:@Model.AccentHex;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 10px rgba(0,0,0,.4);"><span class="material-symbols-outlined" style="font-size:16px;color:#0B141F;">local_shipping</span></div>',
+                iconSize: [28, 28], iconAnchor: [14, 14]
+            });
+            L.marker([lat, lng], { icon: truckIcon }).addTo(map);
+
+            setTimeout(function () {
+                map.invalidateSize();
+                map.fitBounds(line.getBounds(), { padding: [40, 40] });
+            }, 50);
+        })();
+    </script>
+}

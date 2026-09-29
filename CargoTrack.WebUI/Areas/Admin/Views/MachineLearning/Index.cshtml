@@ -1,0 +1,289 @@
+﻿@{
+    ViewData["Title"] = "Yapay Zeka";
+    Layout = "_AdminLayout";
+    bool isModelReady = ViewBag.IsModelReady;
+    int lastCount = ViewBag.LastTrainingDataCount;
+}
+
+<div class="max-w-7xl mx-auto space-y-8 mt-4">
+
+    @* --- ANİMASYONLU BAŞARI BİLDİRİMİ (MODEL EĞİTİMİ) --- *@
+    @if (TempData["SuccessMessage"] is not null)
+    {
+        <div class="relative overflow-hidden rounded-2xl shadow-2xl shadow-emerald-500/30 mb-8 animate-slide-in-bouncy">
+            <!-- Animated Gradient Background -->
+            <div class="absolute inset-0 bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-500 bg-[length:200%_auto] animate-gradient-x opacity-90"></div>
+            
+            <div class="relative bg-white/10 backdrop-blur-md px-8 py-6 flex items-center gap-6">
+                <!-- Icon with Ping Effect -->
+                <div class="relative flex-shrink-0">
+                    <span class="absolute inline-flex h-full w-full rounded-full bg-white opacity-40 animate-ping-slow"></span>
+                    <div class="relative flex items-center justify-center w-14 h-14 bg-white text-emerald-600 rounded-2xl shadow-lg transform rotate-3 transition-transform hover:rotate-0">
+                        <span class="material-symbols-outlined text-3xl font-bold">rocket_launch</span>
+                    </div>
+                </div>
+                <div class="text-white">
+                    <h3 class="text-2xl font-black tracking-tight drop-shadow-md">Eğitim Tamamlandı!</h3>
+                    <p class="text-emerald-50 text-base font-medium mt-1 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm">memory</span>
+                        @TempData["SuccessMessage"]
+                    </p>
+                </div>
+            </div>
+        </div>
+    }
+
+    @* --- ANİMASYONLU TAHMİN SONUCU --- *@
+    @if (TempData["PredictionResult"] is not null)
+    {
+        var isHighRisk = (string)TempData["PredictionResult"] == "Yüksek Risk";
+        
+        <div class="relative overflow-hidden rounded-2xl shadow-2xl mb-8 animate-slide-in-bouncy 
+                    @(isHighRisk ? "shadow-rose-500/30" : "shadow-emerald-500/30")">
+            
+            <div class="absolute inset-0 bg-gradient-to-r bg-[length:200%_auto] animate-gradient-x opacity-95
+                        @(isHighRisk ? "from-rose-600 via-red-500 to-rose-600" : "from-emerald-600 via-teal-500 to-emerald-600")"></div>
+            
+            <div class="absolute -right-10 -top-10 opacity-10 transform rotate-12 scale-150">
+                <span class="material-symbols-outlined" style="font-size: 12rem;">@(isHighRisk ? "warning" : "verified")</span>
+            </div>
+
+            <div class="relative bg-black/10 backdrop-blur-sm px-8 py-8 flex items-center gap-6">
+                <div class="relative flex-shrink-0">
+                    <div class="flex items-center justify-center w-16 h-16 bg-white rounded-full shadow-xl 
+                                @(isHighRisk ? "text-rose-600 animate-pulse-fast" : "text-emerald-600")">
+                        <span class="material-symbols-outlined text-4xl font-black">
+                            @(isHighRisk ? "warning" : "task_alt")
+                        </span>
+                    </div>
+                </div>
+                <div class="text-white z-10">
+                    <h3 class="text-sm font-bold uppercase tracking-widest opacity-80 mb-1">Yapay Zeka Analizi</h3>
+                    <p class="text-3xl font-black tracking-tight drop-shadow-md">@TempData["PredictionResult"]</p>
+                    <div class="mt-3 flex items-center gap-3">
+                        <div class="h-2 w-32 bg-white/30 rounded-full overflow-hidden">
+                            <div class="h-full bg-white rounded-full" style="width: @TempData["PredictionProbability"]%"></div>
+                        </div>
+                        <p class="text-sm font-bold">Gecikme Olasılığı: %@TempData["PredictionProbability"]</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    @if (TempData["ErrorMessage"] is not null)
+    {
+        <div class="bg-red-50 border-l-4 border-red-500 text-red-800 px-6 py-4 rounded-xl shadow-sm text-sm font-bold flex items-center gap-3 animate-fade-in">
+            <span class="material-symbols-outlined text-2xl text-red-600">error</span>
+            @TempData["ErrorMessage"]
+        </div>
+    }
+
+    @* --- BİLGİ KUTUSU --- *@
+    <div class="bg-white/60 backdrop-blur-xl border border-slate-200/60 rounded-2xl p-6 shadow-lg shadow-slate-200/40 flex items-start gap-4 hover:shadow-xl hover:bg-white/80 transition-all duration-300">
+        <div class="mt-1 flex-shrink-0 bg-blue-100 text-blue-600 w-10 h-10 rounded-full flex items-center justify-center shadow-inner">
+            <span class="material-symbols-outlined">lightbulb</span>
+        </div>
+        <p class="text-sm text-slate-600 leading-relaxed font-medium">
+            Bu model, geçmişte teslim edilmiş kargoların verisinden öğrenerek yeni bir kargonun gecikme riskini tahmin eder. 
+            <strong class="text-slate-900">Not:</strong> Modelin veri havuzunda şu an 
+            <span class="inline-flex items-center justify-center px-2 py-1 mx-1 rounded-md bg-blue-50 text-blue-700 font-bold border border-blue-100">@lastCount kayıt</span> 
+            bulunmaktadır. Tahminler gösterge niteliğindedir.
+        </p>
+    </div>
+
+    @* --- KARTLAR (GRID) --- *@
+    <div class="grid lg:grid-cols-2 gap-8">
+        
+        @* 1. MODEL EĞİTİMİ KARTI *@
+        <div class="bg-white/70 backdrop-blur-xl rounded-3xl border border-slate-100 p-8 shadow-xl shadow-slate-200/50 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
+            
+            <div class="absolute top-0 right-0 w-72 h-72 bg-gradient-to-br from-indigo-400/20 to-purple-400/10 rounded-full blur-3xl -mr-20 -mt-20 group-hover:scale-125 transition-transform duration-700"></div>
+
+            <div class="flex items-center gap-5 mb-8 relative z-10">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/40 text-white transform group-hover:rotate-6 transition-transform">
+                    <span class="material-symbols-outlined text-3xl">psychology</span>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-black text-slate-800 tracking-tight">Model Yönetimi</h2>
+                    <div class="flex items-center gap-2 mt-2 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-lg inline-flex">
+                        <span class="relative flex h-3 w-3">
+                          <span class="@(isModelReady ? "bg-emerald-500" : "bg-rose-500") animate-ping absolute inline-flex h-full w-full rounded-full opacity-75"></span>
+                          <span class="@(isModelReady ? "bg-emerald-500" : "bg-rose-500") relative inline-flex rounded-full h-3 w-3"></span>
+                        </span>
+                        <p class="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                            @(isModelReady ? "Sistem Aktif" : "Eğitim Bekliyor")
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <form asp-action="Train" method="post" class="relative z-10 mt-10">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="w-full bg-slate-900 text-white rounded-2xl px-6 py-4 font-bold text-base hover:bg-indigo-600 hover:shadow-xl hover:shadow-indigo-500/30 transition-all duration-300 flex items-center justify-center gap-3 relative overflow-hidden group/btn">
+                    <span class="absolute inset-0 w-full h-full -mt-1 rounded-lg opacity-30 bg-gradient-to-b from-transparent via-transparent to-black"></span>
+                    <span class="material-symbols-outlined transform group-hover/btn:scale-125 transition-transform">model_training</span>
+                    Öğrenme Sürecini Başlat
+                </button>
+            </form>
+        </div>
+
+        @* 2. DENEME TAHMİNİ KARTI *@
+        <div class="bg-white/70 backdrop-blur-xl rounded-3xl border border-slate-100 p-8 shadow-xl shadow-slate-200/50 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300">
+            
+            <div class="absolute bottom-0 left-0 w-72 h-72 bg-gradient-to-tr from-orange-400/20 to-amber-400/10 rounded-full blur-3xl -ml-20 -mb-20 group-hover:scale-125 transition-transform duration-700"></div>
+
+            <div class="flex items-center gap-5 mb-8 relative z-10">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-orange-500 to-amber-500 flex items-center justify-center shadow-lg shadow-orange-500/40 text-white transform group-hover:-rotate-6 transition-transform">
+                    <span class="material-symbols-outlined text-3xl">online_prediction</span>
+                </div>
+                <h2 class="text-2xl font-black text-slate-800 tracking-tight">Tahmin Simülasyonu</h2>
+            </div>
+
+            <form asp-action="Predict" method="post" class="space-y-5 relative z-10">
+                @Html.AntiForgeryToken()
+                
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="relative">
+                        <input name="width" id="width" type="number" step="0.1" required class="peer field-input" placeholder=" " />
+                        <label for="width" class="field-label">En (cm)</label>
+                    </div>
+                    <div class="relative">
+                        <input name="length" id="length" type="number" step="0.1" required class="peer field-input" placeholder=" " />
+                        <label for="length" class="field-label">Boy (cm)</label>
+                    </div>
+                    <div class="relative">
+                        <input name="height" id="height" type="number" step="0.1" required class="peer field-input" placeholder=" " />
+                        <label for="height" class="field-label">Yük. (cm)</label>
+                    </div>
+                </div>
+
+                <div class="relative">
+                    <input name="weight" id="weight" type="number" step="0.1" required class="peer field-input" placeholder=" " />
+                    <label for="weight" class="field-label">Ağırlık (kg)</label>
+                </div>
+
+                <div class="relative group/select">
+                    <select name="cargoType" id="cargoType" class="field-input appearance-none bg-transparent relative z-10 cursor-pointer">
+                        <option value="Standard">Standart Gönderi</option>
+                        <option value="Urgent">Acil Gönderi</option>
+                        <option value="Fragile">Kırılabilir Eşya</option>
+                        <option value="Heavy">Ağır Yük</option>
+                    </select>
+                    <div class="absolute inset-y-0 right-0 flex items-center px-4 text-slate-400 group-hover/select:text-indigo-500 transition-colors pointer-events-none">
+                        <span class="material-symbols-outlined">expand_circle_down</span>
+                    </div>
+                </div>
+
+                <label class="flex items-center p-4 bg-white rounded-2xl border-2 border-slate-100 hover:border-indigo-100 hover:bg-indigo-50/30 transition-all cursor-pointer group/check">
+                    <div class="relative flex items-center justify-center w-6 h-6 mr-3">
+                        <input type="checkbox" name="sameCity" value="true" class="peer w-6 h-6 appearance-none border-2 border-slate-300 rounded-lg checked:bg-indigo-500 checked:border-indigo-500 transition-all cursor-pointer" />
+                        <span class="material-symbols-outlined absolute text-white text-sm opacity-0 peer-checked:opacity-100 pointer-events-none transition-opacity">check</span>
+                    </div>
+                    <span class="block text-sm font-bold text-slate-700 group-hover/check:text-indigo-700 transition-colors select-none">
+                        Gönderici ve Alıcı Aynı Şehirde
+                    </span>
+                </label>
+
+                <button type="submit" class="w-full bg-gradient-to-r from-orange-500 to-amber-500 text-white rounded-2xl px-6 py-4 font-bold text-base hover:shadow-xl hover:shadow-orange-500/40 hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-2 mt-2">
+                    <span class="material-symbols-outlined">analytics</span>
+                    Riski Analiz Et
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        /* Özelleştirilmiş Input Tasarımları */
+        .field-input {
+            width: 100%;
+            border: 2px solid #f1f5f9;
+            border-radius: 1rem;
+            padding: 1.25rem 1rem 0.5rem 1rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #0f172a;
+            background-color: #f8fafc;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .field-input:focus, .field-input:hover {
+            border-color: #6366f1;
+            background-color: #ffffff;
+            box-shadow: 0 4px 20px -5px rgba(99, 102, 241, 0.15);
+            outline: none;
+        }
+
+        .field-label {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #94a3b8;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+        }
+
+        .field-input:focus ~ .field-label,
+        .field-input:not(:placeholder-shown) ~ .field-label {
+            top: 0.5rem;
+            transform: translateY(0);
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: #6366f1;
+            letter-spacing: 0.05em;
+        }
+        
+        select.field-input {
+            padding: 0.875rem 1rem;
+        }
+
+        /* Yeni Eklenen Keyframe Animasyonları */
+        @@keyframes slideInBouncy {
+            0% { opacity: 0; transform: translateY(-30px) scale(0.95); }
+            60% { opacity: 1; transform: translateY(10px) scale(1.02); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-slide-in-bouncy {
+            animation: slideInBouncy 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @@keyframes gradientX {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .animate-gradient-x {
+            animation: gradientX 3s ease infinite;
+        }
+
+        @@keyframes pingSlow {
+            0% { transform: scale(1); opacity: 0.4; }
+            50% { transform: scale(1.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 0; }
+        }
+        .animate-ping-slow {
+            animation: pingSlow 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+        }
+
+        @@keyframes pulseFast {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); box-shadow: 0 0 20px rgba(225, 29, 72, 0.5); }
+        }
+        .animate-pulse-fast {
+            animation: pulseFast 1s ease-in-out infinite;
+        }
+
+        @@keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+    </style>
+}

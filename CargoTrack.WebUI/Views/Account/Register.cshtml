@@ -1,0 +1,201 @@
+﻿@model CargoTrack.WebUI.Models.RegisterViewModel
+@{
+    ViewData["Title"] = "Kayıt Ol";
+    Layout = null;
+    int branchCount = ViewBag.BranchCount ?? 0;
+    int cityCount = ViewBag.CityCount ?? 0;
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>@ViewData["Title"] - CargoTrack</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: { ink: "#0B141F", inkSoft: "#111C2B", paper: "#F3F5F1", amber: "#E8A93B", teal: "#2A8577", rust: "#C1523B" },
+                    fontFamily: {
+                        display: ["Space Grotesk", "system-ui", "sans-serif"],
+                        body: ["Inter", "system-ui", "sans-serif"],
+                        mono: ["IBM Plex Mono", "ui-monospace", "monospace"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html { background: #0B141F; }
+        body { background: #F3F5F1; font-family: 'Inter', system-ui, sans-serif; color: #0B141F; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24; }
+        .blueprint { background-image: radial-gradient(rgba(232,169,59,.14) 1px, transparent 1px); background-size: 26px 26px; }
+        .glow { position: absolute; border-radius: 9999px; filter: blur(80px); pointer-events: none; }
+        .stamp { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid currentColor; padding: 5px 12px 5px 10px;
+                 border-radius: 999px; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 12.5px; }
+
+        .rise { animation: rise .7s cubic-bezier(.2,.8,.2,1) both; }
+        @@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+        .word-in span { display: inline-block; opacity: 0; transform: translateY(14px); animation: wordIn .6s cubic-bezier(.2,.8,.2,1) forwards; }
+        @@keyframes wordIn { to { opacity: 1; transform: translateY(0); } }
+
+        .route-path { stroke-dasharray: 700; stroke-dashoffset: 700; animation: draw 2s ease forwards .5s; }
+        @@keyframes draw { to { stroke-dashoffset: 0; } }
+        .truck-bounce { animation: bounce .55s ease-in-out infinite alternate; }
+        @@keyframes bounce { from { transform: translateY(0) rotate(-2deg); } to { transform: translateY(-2px) rotate(2deg); } }
+
+        .focus-ring:focus-visible { outline: 2px solid #E8A93B; outline-offset: 2px; }
+        ::selection { background: #E8A93B; color: #0B141F; }
+        .field { width: 100%; background: #fff; border: 2px solid rgba(11,20,31,.12); border-radius: .75rem; padding: .75rem 1rem .75rem 2.75rem; transition: border-color .2s; }
+        .field:focus { outline: none; border-color: #2A8577; }
+        .field-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: rgba(11,20,31,.35); }
+
+        @@media (prefers-reduced-motion: reduce) { *, *::before { animation: none !important; } }
+    </style>
+</head>
+<body>
+
+<div class="min-h-screen grid lg:grid-cols-2">
+
+    <!-- LEFT — brand panel -->
+    <div class="relative bg-ink text-paper overflow-hidden hidden lg:flex flex-col min-h-screen">
+        <div class="glow w-[28rem] h-[28rem] bg-teal/20 -top-24 -right-20"></div>
+        <div class="glow w-[26rem] h-[26rem] bg-amber/20 -bottom-32 -left-16"></div>
+        <div class="absolute inset-0 blueprint opacity-40"></div>
+
+        <div class="relative z-10 px-12 pt-12">
+            <a href="@Url.Action("Track", "Cargo")" class="flex items-center gap-2.5 word-in">
+                <span class="material-symbols-outlined text-2xl text-amber" style="animation-delay:.05s">local_shipping</span>
+                <span class="font-display font-bold text-xl tracking-tight">
+                    <span style="animation-delay:.08s">Cargo</span><span style="animation-delay:.16s" class="text-amber">Track</span>
+                </span>
+            </a>
+
+            <span class="stamp text-teal mt-10 rise" style="animation-delay:.15s">Yeni Hesap</span>
+            <h1 class="rise font-display font-bold text-4xl leading-[1.1] mt-5 mb-4" style="animation-delay:.22s">
+                İlk gönderinize<br />bir adım kaldı.
+            </h1>
+            <p class="rise text-paper/60 max-w-sm leading-relaxed" style="animation-delay:.3s">
+                Ücretsiz bir hesap oluşturun; gönderi geçmişinizi kaydedin, her kargonuzu tek yerden takip edin.
+            </p>
+        </div>
+
+        <!-- Animated route -->
+        <div class="relative z-10 flex-1 px-12 my-8">
+            <svg viewBox="0 0 380 200" class="w-full h-full">
+                <path class="route-path" d="M20,50 C80,140 140,30 200,110 C250,180 310,140 360,150"
+                      fill="none" stroke="#E8A93B" stroke-width="2" stroke-linecap="round" opacity="0.5" />
+                <circle r="16" fill="#E8A93B">
+                    <animateMotion dur="5s" begin="2.6s" repeatCount="indefinite"
+                                   path="M20,50 C80,140 140,30 200,110 C250,180 310,140 360,150" />
+                </circle>
+                <g>
+                    <animateMotion dur="5s" begin="2.6s" repeatCount="indefinite"
+                                   path="M20,50 C80,140 140,30 200,110 C250,180 310,140 360,150" />
+                    <foreignObject x="-10" y="-10" width="20" height="20">
+                        <div xmlns="http://www.w3.org/1999/xhtml" class="truck-bounce" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+                            <span class="material-symbols-outlined" style="color:#0B141F; font-size:14px;">local_shipping</span>
+                        </div>
+                    </foreignObject>
+                </g>
+                <circle cx="20" cy="50" r="7" fill="#111C2B" stroke="#2A8577" stroke-width="2" />
+                <circle cx="360" cy="150" r="7" fill="#111C2B" stroke="#E8A93B" stroke-width="2" />
+            </svg>
+        </div>
+
+        <!-- Real stats + trust card -->
+        <div class="relative z-10 px-12 pb-12">
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <div class="bg-inkSoft border border-paper/10 rounded-xl px-5 py-4">
+                    <p class="font-display font-bold text-2xl">@branchCount</p>
+                    <p class="text-xs text-paper/45 mt-0.5">Aktif Şube</p>
+                </div>
+                <div class="bg-inkSoft border border-paper/10 rounded-xl px-5 py-4">
+                    <p class="font-display font-bold text-2xl">@cityCount</p>
+                    <p class="text-xs text-paper/45 mt-0.5">Farklı Şehir</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3 text-sm text-paper/60">
+                <span class="material-symbols-outlined text-amber text-lg">bolt</span>
+                Kayıt saniyeler sürer, kredi kartı gerekmez
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT — form -->
+    <div class="relative bg-paper flex items-center justify-center p-8 sm:p-12 lg:p-16">
+        <div class="absolute inset-0 blueprint opacity-[0.35] lg:hidden"></div>
+
+        <div class="relative w-full max-w-sm">
+            <a href="@Url.Action("Track", "Cargo")" class="lg:hidden flex items-center gap-2 mb-10">
+                <span class="material-symbols-outlined text-2xl text-ink">local_shipping</span>
+                <span class="font-display font-bold text-xl text-ink">Cargo<span class="text-teal">Track</span></span>
+            </a>
+
+            <h2 class="rise font-display font-bold text-3xl mb-1.5">Hesap oluşturun</h2>
+            <p class="rise text-ink/50 text-sm mb-9" style="animation-delay:.05s">Birkaç bilgiyle hemen başlayın.</p>
+
+            <form asp-action="Register" method="post" class="rise space-y-4" style="animation-delay:.1s">
+                @Html.AntiForgeryToken()
+                <div asp-validation-summary="All" class="text-rust text-sm font-medium"></div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium mb-1.5">Ad</label>
+                        <input asp-for="FirstName" class="field focus-ring !pl-4" />
+                        <span asp-validation-for="FirstName" class="text-rust text-xs"></span>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-1.5">Soyad</label>
+                        <input asp-for="LastName" class="field focus-ring !pl-4" />
+                        <span asp-validation-for="LastName" class="text-rust text-xs"></span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1.5">E-posta</label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined field-icon text-lg">mail</span>
+                        <input asp-for="Email" placeholder="ornek@eposta.com" class="field focus-ring" />
+                    </div>
+                    <span asp-validation-for="Email" class="text-rust text-sm"></span>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1.5">Şifre</label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined field-icon text-lg">lock</span>
+                        <input asp-for="Password" placeholder="••••••••" class="field focus-ring" />
+                    </div>
+                    <span asp-validation-for="Password" class="text-rust text-sm"></span>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-1.5">Şifre (Tekrar)</label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined field-icon text-lg">lock_reset</span>
+                        <input asp-for="ConfirmPassword" placeholder="••••••••" class="field focus-ring" />
+                    </div>
+                    <span asp-validation-for="ConfirmPassword" class="text-rust text-sm"></span>
+                </div>
+
+                <button type="submit" class="focus-ring w-full bg-ink text-paper rounded-xl px-6 py-3.5 font-display font-semibold hover:bg-teal transition-colors flex items-center justify-center gap-2">
+                    Kayıt Ol
+                    <span class="material-symbols-outlined text-lg">arrow_forward</span>
+                </button>
+            </form>
+
+            <p class="text-sm text-ink/50 mt-6 text-center">
+                Zaten hesabınız var mı?
+                <a href="@Url.Action("Login", "Account")" class="text-teal font-semibold hover:underline">Giriş yapın</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<partial name="_ValidationScriptsPartial" />
+</body>
+</html>

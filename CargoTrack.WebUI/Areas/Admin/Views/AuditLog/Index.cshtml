@@ -1,0 +1,67 @@
+﻿@model List<CargoTrack.Dto.Dtos.AuditLogDtos.ResultAuditLogDto>
+@using CargoTrack.Entity.Entities.Enums
+@{
+    ViewData["Title"] = "Audit Log";
+    Layout = "_AdminLayout";
+
+    string ActionBadge(AuditActionType type) => type switch
+    {
+        AuditActionType.Create => "bg-success-container text-success",
+        AuditActionType.StatusChange => "bg-secondary-container/15 text-secondary",
+        AuditActionType.Update => "bg-indigo-50 text-indigo-700",
+        AuditActionType.Delete => "bg-error-container text-on-error-container",
+        _ => "bg-surface-container text-on-surface-variant"
+    };
+    string ActionLabel(AuditActionType type) => type switch
+    {
+        AuditActionType.Create => "Oluşturma",
+        AuditActionType.Update => "Güncelleme",
+        AuditActionType.Delete => "Silme",
+        AuditActionType.StatusChange => "Durum Değişikliği",
+        _ => type.ToString()
+    };
+}
+
+<div class="bg-white rounded-2xl border border-outline-variant overflow-hidden">
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="border-b-2 border-primary-container/10">
+                <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">Tarih / Saat</th>
+                <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">Kullanıcı</th>
+                <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">İşlem</th>
+                <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">Eski → Yeni Değer</th>
+                <th class="text-left px-6 py-4 font-bold text-[11px] tracking-[0.08em] text-on-surface-variant/70 uppercase">Açıklama</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-outline-variant/70">
+            @foreach (var log in Model)
+            {
+                <tr class="hover:bg-surface-container-low transition-colors">
+                    <td class="px-6 py-3.5 text-on-surface-variant font-mono text-xs whitespace-nowrap">@log.ActionDate.AddHours(3).ToString("d MMM yyyy, HH:mm")</td>
+                    <td class="px-6 py-3.5 font-semibold text-on-background">@log.PerformedByName</td>
+                    <td class="px-6 py-3.5">
+                        <span class="inline-flex px-2.5 py-1 rounded-full text-xs font-bold @ActionBadge(log.ActionType)">
+                            @ActionLabel(log.ActionType)
+                        </span>
+                    </td>
+                    <td class="px-6 py-3.5 text-on-surface-variant text-xs">
+                        @if (log.OldValue is not null)
+                        {
+                            <span>@log.OldValue</span> <span class="mx-1">→</span>
+                        }
+                        <span class="font-semibold text-on-background">@log.NewValue</span>
+                    </td>
+                    <td class="px-6 py-3.5 text-on-surface-variant">@log.Description</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (!Model.Any())
+    {
+        <div class="text-center py-16">
+            <span class="material-symbols-outlined text-outline-variant" style="font-size:44px">history</span>
+            <p class="font-bold text-on-background mt-3">Henüz kayıt yok</p>
+        </div>
+    }
+</div>

@@ -1,0 +1,336 @@
+﻿@{
+    ViewData["Title"] = "Akıllı Rota Planlama";
+    Layout = "_AdminLayout";
+}
+
+<div class="max-w-7xl mx-auto space-y-6 animate-fade-in">
+    
+    <!-- ÜST BAŞLIK VE AKSİYON ALANI -->
+    <div class="bg-white/80 backdrop-blur-xl border border-slate-200/60 p-6 rounded-3xl shadow-xl shadow-slate-200/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 text-white">
+                <span class="material-symbols-outlined text-3xl">route</span>
+            </div>
+            <div>
+                <h1 class="text-2xl font-black text-slate-800 tracking-tight">Akıllı Rota Planlayıcı</h1>
+                <p class="text-sm font-medium text-slate-500">Sistemdeki kargoları çekin veya haritadan özel durak ekleyip rotayı optimize edin</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button id="btnFetchCargos" type="button" class="bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold px-5 py-3.5 rounded-2xl border border-slate-200/80 transition-all duration-300 flex items-center gap-2 cursor-pointer text-sm">
+                <span class="material-symbols-outlined text-indigo-600">inventory_2</span>
+                Sistemdeki Kargoları Çek
+            </button>
+
+            <button id="btnOptimize" type="button" class="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold px-6 py-3.5 rounded-2xl shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 hover:-translate-y-0.5 transition-all duration-300 flex items-center gap-2 cursor-pointer text-sm">
+                <span class="material-symbols-outlined">auto_fix_high</span>
+                En Uygun Rotayı Oluştur
+            </button>
+        </div>
+    </div>
+
+    <!-- İSTATİSTİKLER -->
+    <div id="routeSummary" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-white/80 backdrop-blur-xl border border-slate-200/60 p-5 rounded-2xl shadow-md flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-2xl">distance</span>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Toplam Mesafe</p>
+                <p class="text-2xl font-black text-slate-800"><span id="txtDistance">0</span> <span class="text-sm font-bold text-slate-500">km</span></p>
+            </div>
+        </div>
+
+        <div class="bg-white/80 backdrop-blur-xl border border-slate-200/60 p-5 rounded-2xl shadow-md flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-2xl">schedule</span>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Tahmini Süre</p>
+                <p class="text-2xl font-black text-slate-800"><span id="txtTime">0</span> <span class="text-sm font-bold text-slate-500">dk</span></p>
+            </div>
+        </div>
+
+        <div class="bg-white/80 backdrop-blur-xl border border-slate-200/60 p-5 rounded-2xl shadow-md flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <span class="material-symbols-outlined text-2xl">pin_drop</span>
+            </div>
+            <div>
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Seçilen Durak Sayısı</p>
+                <p class="text-2xl font-black text-slate-800"><span id="txtCount">0</span> <span class="text-sm font-bold text-slate-500">Nokta</span></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MASAÜSTÜ PANEL: DURAK EKLEME + HARİTA -->
+    <div class="grid lg:grid-cols-3 gap-6">
+        
+        <!-- SOL FORM & LİSTE -->
+        <div class="bg-white/80 backdrop-blur-xl border border-slate-200/60 p-6 rounded-3xl shadow-xl shadow-slate-200/40 space-y-4">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-indigo-600">format_list_bulleted</span>
+                    Rota Durakları
+                </h2>
+                <button id="btnClearList" class="text-xs text-rose-600 font-bold hover:underline">Temizle</button>
+            </div>
+
+            <!-- EKLENEN DURAKLARIN LİSTESİ -->
+            <div id="pointList" class="max-h-[460px] overflow-y-auto space-y-2 pr-1">
+                <p id="emptyListMsg" class="text-xs text-slate-400 italic text-center py-10">
+                    Henüz durak eklenmedi.<br/>Yukarıdaki <strong>"Sistemdeki Kargoları Çek"</strong> butonuna basabilir veya haritaya tıklayabilirsiniz.
+                </p>
+            </div>
+        </div>
+
+        <!-- SAĞ: HARİTA -->
+        <div class="lg:col-span-2 bg-white/80 backdrop-blur-xl border border-slate-200/60 p-4 rounded-3xl shadow-xl shadow-slate-200/40 relative">
+            <div id="courierMap" class="w-full h-[580px] rounded-2xl border border-slate-200/80 z-10"></div>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- SİSTEMDEKİ KARGOLAR MODALI -->
+<div id="cargoModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full p-6 space-y-4 border border-slate-100 animate-fade-in">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+            <h3 class="text-lg font-black text-slate-800 flex items-center gap-2">
+                <span class="material-symbols-outlined text-indigo-600">inventory</span>
+                Sistemdeki Dağıtıma Uyun Kargolar
+            </h3>
+            <button id="btnCloseModal" class="text-slate-400 hover:text-slate-600 p-1">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+
+        <div id="modalCargoList" class="max-h-[350px] overflow-y-auto space-y-2 pr-1">
+            <p class="text-center text-sm text-slate-400 py-6">Kargolar yükleniyor...</p>
+        </div>
+
+        <div class="flex justify-between items-center pt-2 border-t border-slate-100">
+            <button id="btnAddAllCargos" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-4 py-2.5 rounded-xl text-xs transition-all">
+                Tümünü Rotaya Ekle
+            </button>
+            <button id="btnDoneModal" class="bg-slate-900 text-white font-bold px-6 py-2.5 rounded-xl text-xs">
+                Tamam
+            </button>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        .leaflet-container { font-family: inherit; }
+        .custom-div-icon { background: none; border: none; }
+    </style>
+}
+
+@section Scripts {
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            var map = L.map('courierMap').setView([39.9207, 32.8541], 12);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+
+            var markersGroup = L.layerGroup().addTo(map);
+            var routePolyline = null;
+            var pointsList = [];
+            var fetchedCargos = [];
+
+            // 1. Sistemdeki Kargoları Çekme İsteği
+            $('#btnFetchCargos').click(function () {
+                $('#cargoModal').removeClass('hidden');
+                $('#modalCargoList').html('<p class="text-center text-sm text-slate-400 py-6">Kargolar yükleniyor...</p>');
+
+                $.get('/Admin/RouteOptimization/GetPendingCargos', function (data) {
+                    fetchedCargos = data || [];
+                    renderModalCargoList();
+                }).fail(function() {
+                    $('#modalCargoList').html('<p class="text-center text-sm text-rose-500 py-6">Kargolar yüklenirken hata oluştu.</p>');
+                });
+            });
+
+            $('#btnCloseModal, #btnDoneModal').click(function () {
+                $('#cargoModal').addClass('hidden');
+            });
+
+            function renderModalCargoList() {
+                var $list =$('#modalCargoList');
+                $list.empty();
+
+                if (fetchedCargos.length === 0) {
+                    $list.html('<p class="text-center text-sm text-slate-400 py-6">Dağıtıma uygun kargo bulunamadı.</p>');
+                    return;
+                }
+
+                fetchedCargos.forEach(function (cargo, idx) {
+                    var isAdded = pointsList.some(p => p.trackingCode === cargo.trackingCode);
+                    var html = `
+                        <div class="flex items-center justify-between p-3 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                            <div>
+                                <span class="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">${cargo.trackingCode || 'Sistem Kargosu'}</span>
+                                <h4 class="text-sm font-bold text-slate-800 mt-1">${cargo.receiverName}</h4>
+                                <p class="text-xs text-slate-500 mt-0.5">${cargo.address}</p>
+                            </div>
+                            <button onclick="addSingleCargoFromModal(${idx})" class="${isAdded ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-600 text-white'} font-bold px-3 py-1.5 rounded-xl text-xs transition-all cursor-pointer">
+                                ${isAdded ? 'Eklendi' : 'Rotaya Ekle'}
+                            </button>
+                        </div>`;
+                    $list.append(html);
+                });
+            }
+
+            window.addSingleCargoFromModal = function (idx) {
+                var cargo = fetchedCargos[idx];
+                if (!pointsList.some(p => p.trackingCode === cargo.trackingCode)) {
+                    pointsList.push(cargo);
+                    renderPointsUI();
+                    renderModalCargoList();
+                }
+            };
+
+            $('#btnAddAllCargos').click(function () {
+                fetchedCargos.forEach(function (cargo) {
+                    if (!pointsList.some(p => p.trackingCode === cargo.trackingCode)) {
+                        pointsList.push(cargo);
+                    }
+                });
+                renderPointsUI();
+                renderModalCargoList();
+            });
+
+            // Haritaya Tıklanınca Özel Durak Ekleme
+            map.on('click', function (e) {
+                var lat = e.latlng.lat.toFixed(6);
+                var lng = e.latlng.lng.toFixed(6);
+
+                var newPoint = {
+                    cargoId: '00000000-0000-0000-0000-000000000000',
+                    trackingCode: 'Özel Nokta',
+                    receiverName: 'Manuel Durak ' + (pointsList.length + 1),
+                    address: 'Haritada Seçilen Konum (' + lat + ', ' + lng + ')',
+                    latitude: parseFloat(lat),
+                    longitude: parseFloat(lng)
+                };
+
+                pointsList.push(newPoint);
+                renderPointsUI();
+            });
+
+            function renderPointsUI() {
+                var $container =$('#pointList');
+                $container.empty();
+                markersGroup.clearLayers();
+
+                if (pointsList.length === 0) {
+                    $container.append('<p id="emptyListMsg" class="text-xs text-slate-400 italic text-center py-10">Henüz durak eklenmedi.<br/>Yukarıdaki <strong>"Sistemdeki Kargoları Çek"</strong> butonuna basabilir veya haritaya tıklayabilirsiniz.</p>');
+                    $('#txtCount').text(0);
+                    return;
+                }
+
+                $('#txtCount').text(pointsList.length);
+
+                pointsList.forEach(function (pt, index) {
+                    var html = `
+                        <div class="flex items-center justify-between p-3 bg-slate-50 border border-slate-200/80 rounded-2xl">
+                            <div class="overflow-hidden">
+                                <span class="text-[10px] font-bold text-slate-500">${pt.trackingCode || 'Durak'}</span>
+                                <p class="text-xs font-bold text-slate-800 truncate">${index + 1}. ${pt.receiverName}</p>
+                                <p class="text-[10px] text-slate-500 truncate">${pt.address}</p>
+                            </div>
+                            <button onclick="removePoint(${index})" class="text-rose-500 hover:text-rose-700 p-1 cursor-pointer">
+                                <span class="material-symbols-outlined text-sm">delete</span>
+                            </button>
+                        </div>`;
+                    $container.append(html);
+
+                    L.marker([pt.latitude, pt.longitude]).addTo(markersGroup)
+                        .bindPopup(`<b>${pt.receiverName}</b><br>${pt.address}`);
+                });
+            }
+
+            window.removePoint = function (index) {
+                pointsList.splice(index, 1);
+                renderPointsUI();
+            };
+
+            $('#btnClearList').click(function () {
+                pointsList = [];
+                renderPointsUI();
+                if (routePolyline) map.removeLayer(routePolyline);
+                $('#txtDistance').text(0);
+                $('#txtTime').text(0);
+            });
+
+            // En Uygun Rotayı Oluştur
+            $('#btnOptimize').click(function () {
+                if (pointsList.length < 2) {
+                    alert("Rota oluşturabilmek için en az 2 durak eklemelisiniz.");
+                    return;
+                }
+
+                var $btn = $(this);$btn.prop('disabled', true).addClass('opacity-75');
+
+                $.ajax({
+                    url: '/Admin/RouteOptimization/OptimizeRoute',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(pointsList),
+                    success: function (data) {
+                        $btn.prop('disabled', false).removeClass('opacity-75');
+
+                        if (!data || !data.orderedPoints) return;
+
+                        $('#txtDistance').text(data.totalDistanceKm);
+                        $('#txtTime').text(data.estimatedTimeMinutes);
+
+                        markersGroup.clearLayers();
+                        if (routePolyline) map.removeLayer(routePolyline);
+
+                        var latLngs = [];
+
+                        data.orderedPoints.forEach(function (pt) {
+                            var pos = [pt.latitude, pt.longitude];
+                            latLngs.push(pos);
+
+                            var markerHtml = `<div style='background-color:#4f46e5;color:white;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-align:center;font-weight:bold;font-size:12px;box-shadow:0 4px 10px rgba(79,70,229,0.4)'>${pt.visitOrder}</div>`;
+
+                            L.marker(pos, {
+                                icon: L.divIcon({
+                                    className: 'custom-div-icon',
+                                    html: markerHtml,
+                                    iconSize: [28, 28],
+                                    iconAnchor: [14, 14]
+                                })
+                            }).addTo(markersGroup)
+                              .bindPopup(`<div class='p-1'><span class='text-xs font-bold text-indigo-600'>${pt.visitOrder}. Sıradaki Durak</span><h4 class='font-bold text-slate-800 mt-0.5'>${pt.receiverName}</h4><p class='text-xs text-slate-500 mt-1'>${pt.address}</p></div>`);
+                        });
+
+                        routePolyline = L.polyline(latLngs, {
+                            color: '#6366f1',
+                            weight: 5,
+                            opacity: 0.85,
+                            dashArray: '8, 8'
+                        }).addTo(map);
+
+                        map.fitBounds(routePolyline.getBounds(), { padding: [40, 40] });
+                    },
+                    error: function () {
+                        $btn.prop('disabled', false).removeClass('opacity-75');
+                        alert("Rota hesaplanırken bir hata oluştu.");
+                    }
+                });
+            });
+        });
+    </script>
+}

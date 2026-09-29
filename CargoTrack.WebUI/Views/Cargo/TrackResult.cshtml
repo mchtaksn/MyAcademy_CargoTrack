@@ -1,0 +1,206 @@
+﻿@model CargoTrack.Dto.Dtos.CargoDtos.TrackResultDto
+@using CargoTrack.WebUI.Extensions
+@using CargoTrack.Entity.Entities.Enums
+@{
+    ViewData["Title"] = "Takip Sonucu";
+    Layout = "_PublicLayout";
+
+    var status = Model.CargoStatus;
+    var progress = status.ToProgressPercent();
+    var isFinal = status.IsFinal();
+    var isProblem = status.IsProblem();
+    var isDelayed = !isFinal && Model.EstimatedArrivalDate < DateTime.UtcNow;
+    var lastMovement = Model.Movements.LastOrDefault();
+    var totalSteps = Model.Movements.Count + (isFinal ? 0 : 1);
+}
+
+<!-- ============ TOP BAND ============ -->
+<div class="relative bg-ink text-paper overflow-hidden">
+    <div class="glow w-[26rem] h-[26rem] bg-amber/20 -top-32 -left-24"></div>
+    <div class="glow w-[30rem] h-[30rem] bg-teal/20 -bottom-40 right-0"></div>
+    <div class="absolute inset-0 blueprint opacity-50"></div>
+
+    <section class="relative z-10 max-w-4xl mx-auto px-6 pt-8 pb-10">
+        <a href="@Url.Action("Track", "Cargo")" class="rise inline-flex items-center gap-1.5 text-sm text-paper/55 hover:text-amber transition-colors focus-ring rounded">
+            <span class="material-symbols-outlined text-base">arrow_back</span>
+            Başka bir kargo sorgula
+        </a>
+
+        <div class="rise mt-6 flex flex-col lg:flex-row lg:items-end justify-between gap-6" style="animation-delay:.08s">
+            <div>
+                <p class="text-sm text-paper/50 mb-2">Takip numarası</p>
+                <div class="flex flex-wrap items-center gap-4">
+                    <h1 class="font-mono font-semibold text-3xl sm:text-4xl tracking-wide">@Model.TrackCode</h1>
+                    <span class="stamp @status.ToBadgeColorClass()">
+                        <span class="material-symbols-outlined text-base">@status.ToIcon()</span>
+                        @status.ToDisplayText()
+                    </span>
+                    @if (isDelayed)
+                    {
+                        <span class="stamp text-rust bg-rust/10">
+                            <span class="material-symbols-outlined text-base">schedule</span>
+                            Gecikmede
+                        </span>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Route card with real map -->
+        <div class="rise mt-10 bg-inkSoft/80 backdrop-blur border border-paper/10 rounded-2xl p-6 sm:p-8" style="animation-delay:.16s">
+            <div class="flex items-center justify-between mb-5">
+                <div class="flex items-center gap-3">
+                    <span class="w-10 h-10 rounded-xl bg-teal/15 border border-teal/40 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-teal">inventory_2</span>
+                    </span>
+                    <p class="font-display font-semibold text-base sm:text-lg">@Model.OriginCityName</p>
+                </div>
+                <span class="material-symbols-outlined text-paper/25 text-2xl">arrow_forward</span>
+                <div class="flex items-center gap-3">
+                    <p class="font-display font-semibold text-base sm:text-lg">@Model.DestinationCityName</p>
+                    <span class="w-10 h-10 rounded-xl bg-amber/15 border border-amber/40 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-amber">home_pin</span>
+                    </span>
+                </div>
+            </div>
+
+            @{
+                var routeMapModel = new CargoTrack.WebUI.Models.RouteMapViewModel
+                {
+                    MapId = "routeMap-" + Model.TrackCode.Replace("-", ""),
+                    OriginLat = Model.OriginLat,
+                    OriginLng = Model.OriginLng,
+                    DestinationLat = Model.DestinationLat,
+                    DestinationLng = Model.DestinationLng,
+                    OriginLabel = Model.OriginCityName,
+                    DestinationLabel = Model.DestinationCityName,
+                    ProgressPercent = progress,
+                    AccentHex = isProblem ? "#C1523B" : status == CargoStatus.Delivered ? "#2A8577" : "#E8A93B"
+                };
+            }
+            <partial name="_RouteMap" model="routeMapModel" />
+
+            <p class="text-[11px] text-paper/40 mt-3 text-right">%@progress tamamlandı</p>
+        </div>
+    </section>
+    <div class="hazard"></div>
+</div>
+
+<!-- ============ BODY ============ -->
+<div class="max-w-4xl mx-auto px-6 py-10">
+    <div class="grid lg:grid-cols-12 gap-6">
+
+        <!-- ETA / status card -->
+        <div class="lg:col-span-5">
+            <div class="rise relative overflow-hidden rounded-2xl @(isProblem ? "bg-rust" : "bg-teal") text-paper p-6 sm:p-7 lg:sticky lg:top-6" style="animation-delay:.24s">
+                @if (status == CargoStatus.Delivered)
+                {
+                    <span class="material-symbols-outlined absolute -right-4 -bottom-8 text-paper/10 select-none" style="font-size:170px">task_alt</span>
+                    <p class="text-sm text-paper/70 mb-1">Teslim edildi</p>
+                    <p class="font-display font-bold text-3xl sm:text-4xl">@(lastMovement?.MovementDate.ToRelativeDay())</p>
+                    <p class="text-paper/75 mt-1">@(lastMovement?.MovementDate.ToLongTr())</p>
+                }
+                else if (isProblem)
+                {
+                    <span class="material-symbols-outlined absolute -right-4 -bottom-8 text-paper/10 select-none" style="font-size:170px">undo</span>
+                    <p class="text-sm text-paper/70 mb-1">Teslimat durumu</p>
+                    <p class="font-display font-bold text-3xl sm:text-4xl">@status.ToDisplayText()</p>
+                }
+                else
+                {
+                    <span class="material-symbols-outlined absolute -right-4 -bottom-8 text-paper/10 select-none" style="font-size:170px">schedule</span>
+                    <p class="text-sm text-paper/70 mb-1">Tahmini teslimat</p>
+                    <p class="font-display font-bold text-3xl sm:text-4xl">@Model.EstimatedArrivalDate.ToRelativeDay()</p>
+                    <p class="text-paper/75 mt-1">@Model.EstimatedArrivalDate.ToLongTr()</p>
+                }
+
+                <div class="relative mt-5">
+                    <span class="inline-flex items-center gap-2 bg-paper/10 rounded-full px-3 py-1.5 text-sm">
+                        @if (!isFinal)
+                        {
+                            <span class="w-2 h-2 rounded-full bg-amber animate-pulse"></span>
+                        }
+                        @status.ToHint()
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="lg:col-span-7">
+            <div class="rise bg-white border border-ink/10 rounded-2xl p-6" style="animation-delay:.3s">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="font-display font-semibold text-lg">Kargo hareketleri</h2>
+                    <span class="text-xs text-ink/45">@Model.Movements.Count / @totalSteps adım</span>
+                </div>
+
+                <ol class="relative">
+                    @for (int i = 0; i < Model.Movements.Count; i++)
+                    {
+                        var m = Model.Movements[i];
+                        var isLast = i == Model.Movements.Count - 1;
+                        var isCurrent = isLast && !isFinal;
+                        var hasNext = !isLast || !isFinal;
+
+                        var nodeClass = isCurrent
+                            ? $"{status.ToSolidClass()} now-ring"
+                            : isLast && isFinal
+                                ? status.ToSolidClass()
+                                : "bg-ink text-paper";
+
+                        <li class="relative pl-12 pb-7">
+                            @if (hasNext)
+                            {
+                                <span class="tl-rail @(isCurrent ? "upcoming" : "")"></span>
+                            }
+                            <span class="absolute left-0 top-0 w-8 h-8 rounded-full flex items-center justify-center @nodeClass" style="--ring:@status.ToRingColor()">
+                                <span class="material-symbols-outlined text-base">@m.NewStatus.ToIcon()</span>
+                            </span>
+
+                            @if (isCurrent)
+                            {
+                                <div class="@(isProblem ? "bg-rust/10 border-rust/30" : "bg-amber/10 border-amber/30") border rounded-xl p-3 -mt-1">
+                                    <div class="flex items-center justify-between gap-2">
+                                        <p class="font-semibold">@m.NewStatus.ToDisplayText()</p>
+                                        <span class="text-[11px] font-semibold text-amber bg-ink rounded-full px-2 py-0.5">Şu an</span>
+                                    </div>
+                                    <p class="text-sm text-ink/55 mt-0.5">@m.LocationName</p>
+                                    <p class="font-mono text-xs text-ink/40 mt-1">@m.MovementDate.ToDateTimeTr()</p>
+                                </div>
+                            }
+                            else
+                            {
+                                <p class="font-medium">@m.NewStatus.ToDisplayText()</p>
+                                <p class="text-sm text-ink/50 mt-0.5">@m.LocationName</p>
+                                <p class="font-mono text-xs text-ink/40 mt-1">@m.MovementDate.ToDateTimeTr()</p>
+                            }
+                        </li>
+                    }
+
+                    @if (!isFinal)
+                    {
+                        <li class="relative pl-12">
+                            <span class="absolute left-0 top-0 w-8 h-8 rounded-full border-2 border-dashed border-ink/25 bg-white flex items-center justify-center">
+                                <span class="material-symbols-outlined text-base text-ink/30">@(isProblem ? "assignment_return" : "task_alt")</span>
+                            </span>
+                            <p class="font-medium text-ink/40">@(isProblem ? "Göndericiye iade edilecek" : "Teslim edilecek")</p>
+                            @if (!isProblem)
+                            {
+                                <p class="text-sm text-ink/35 mt-0.5">Beklenen: @Model.EstimatedArrivalDate.ToRelativeDay()</p>
+                            }
+                        </li>
+                    }
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .tl-rail { position: absolute; left: 15px; top: 34px; bottom: -6px; width: 2px; background: #0B141F; opacity: .12; }
+        .tl-rail.upcoming { opacity: 1; background: none; border-left: 2px dashed rgba(11,20,31,.18); width: 0; }
+        .now-ring::before { content: ""; position: absolute; inset: -6px; border-radius: 9999px; border: 2px solid var(--ring, #E8A93B); animation: ring 1.8s ease-out infinite; }
+        @@keyframes ring { from { transform: scale(.75); opacity: .9; } to { transform: scale(1.5); opacity: 0; } }
+    </style>
+}

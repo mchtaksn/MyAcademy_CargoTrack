@@ -1,0 +1,137 @@
+﻿@model CargoTrack.Dto.Dtos.CargoDtos.CreateCargoDto
+@using Microsoft.AspNetCore.Mvc.Rendering
+@using CargoTrack.Entity.Entities.Enums
+@{
+    ViewData["Title"] = "Yeni Kargo Kabul Et";
+    Layout = "_PublicLayout";
+    string originBranchName = ViewBag.OriginBranchName;
+    List<SelectListItem> branches = ViewBag.Branches;
+    List<SelectListItem> customers = ViewBag.Customers;
+}
+
+<div class="relative bg-ink text-paper overflow-hidden">
+    <div class="glow w-96 h-96 bg-amber/20 -top-24 -left-16"></div>
+    <div class="glow w-96 h-96 bg-teal/20 -bottom-24 right-0"></div>
+    <div class="absolute inset-0 blueprint opacity-40"></div>
+
+    <section class="relative z-10 max-w-3xl mx-auto px-6 pt-10 pb-16">
+        <a href="@Url.Action("Index")" class="rise inline-flex items-center gap-1.5 text-sm text-paper/55 hover:text-amber transition-colors">
+            <span class="material-symbols-outlined text-base">arrow_back</span>
+            Kargo listesine dön
+        </a>
+
+        <span class="stamp text-amber mt-6 rise" style="animation-delay:.06s">Gişe İşlemi</span>
+        <h1 class="rise font-display font-bold text-3xl sm:text-4xl mt-4 mb-2" style="animation-delay:.12s">Yeni Kargo Kabul Et</h1>
+        <p class="rise text-paper/55 max-w-lg" style="animation-delay:.18s">
+            Gönderici ve alıcı bilgilerini girin, paket ölçülerini ekleyin — takip numarası ve tahmini teslimat tarihi otomatik oluşturulur.
+        </p>
+    </section>
+    <div class="hazard"></div>
+</div>
+
+<section class="bg-paper py-10">
+    <div class="max-w-3xl mx-auto px-6">
+
+        <div class="bg-white border border-ink/10 rounded-2xl p-4 mb-6 flex items-center gap-3">
+            <span class="w-10 h-10 rounded-xl bg-teal/10 border border-teal/30 flex items-center justify-center">
+                <span class="material-symbols-outlined text-teal">inventory_2</span>
+            </span>
+            <div>
+                <p class="text-xs text-ink/45">Gönderici Şubesi (otomatik)</p>
+                <p class="font-display font-semibold">@originBranchName</p>
+            </div>
+        </div>
+
+        <form asp-action="Create" method="post" class="bg-white border border-ink/10 rounded-2xl p-7 space-y-6">
+            @Html.AntiForgeryToken()
+            <input type="hidden" asp-for="OriginBranchId" />
+            <div asp-validation-summary="All" class="text-rust text-sm"></div>
+
+            <div class="grid sm:grid-cols-2 gap-5">
+                <div>
+                    <label class="block text-sm font-medium mb-1.5">Gönderici</label>
+                    <select asp-for="SenderId" asp-items="customers"
+                            class="w-full border-2 border-ink/15 rounded-xl px-4 py-2.5 focus:outline-none focus:border-teal transition-colors">
+                        <option value="">Seçiniz</option>
+                    </select>
+                    <span asp-validation-for="SenderId" class="text-rust text-xs"></span>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1.5">Alıcı</label>
+                    <select asp-for="ReceiverId" asp-items="customers"
+                            class="w-full border-2 border-ink/15 rounded-xl px-4 py-2.5 focus:outline-none focus:border-teal transition-colors">
+                        <option value="">Seçiniz</option>
+                    </select>
+                    <span asp-validation-for="ReceiverId" class="text-rust text-xs"></span>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1.5">Varış Şubesi</label>
+                <select asp-for="DestinationBranchId" asp-items="branches"
+                        class="w-full border-2 border-ink/15 rounded-xl px-4 py-2.5 focus:outline-none focus:border-teal transition-colors">
+                    <option value="">Seçiniz</option>
+                </select>
+                <span asp-validation-for="DestinationBranchId" class="text-rust text-xs"></span>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1.5">Gönderi Tipi</label>
+                <select asp-for="CargoType" asp-items="Html.GetEnumSelectList<CargoType>()"
+                        class="w-full border-2 border-ink/15 rounded-xl px-4 py-2.5 focus:outline-none focus:border-teal transition-colors"></select>
+            </div>
+
+            <div>
+                <p class="text-sm font-medium mb-1.5">Ölçüler ve Ağırlık</p>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-xs text-ink/50 mb-1">En (cm)</label>
+                        <input asp-for="Width" id="width" type="number" step="0.1"
+                               class="w-full border-2 border-ink/15 rounded-xl px-3 py-2.5 font-mono focus:outline-none focus:border-teal" />
+                        <span asp-validation-for="Width" class="text-rust text-xs"></span>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-ink/50 mb-1">Boy (cm)</label>
+                        <input asp-for="Length" id="length" type="number" step="0.1"
+                               class="w-full border-2 border-ink/15 rounded-xl px-3 py-2.5 font-mono focus:outline-none focus:border-teal" />
+                        <span asp-validation-for="Length" class="text-rust text-xs"></span>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-ink/50 mb-1">Yükseklik (cm)</label>
+                        <input asp-for="Height" id="height" type="number" step="0.1"
+                               class="w-full border-2 border-ink/15 rounded-xl px-3 py-2.5 font-mono focus:outline-none focus:border-teal" />
+                        <span asp-validation-for="Height" class="text-rust text-xs"></span>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-ink/50 mb-1">Ağırlık (kg)</label>
+                        <input asp-for="Weight" type="number" step="0.1"
+                               class="w-full border-2 border-ink/15 rounded-xl px-3 py-2.5 font-mono focus:outline-none focus:border-teal" />
+                        <span asp-validation-for="Weight" class="text-rust text-xs"></span>
+                    </div>
+                </div>
+                <p class="text-sm text-teal font-medium mt-2">
+                    Desi: <span id="desiResult" class="font-mono">0</span>
+                </p>
+            </div>
+
+            <button type="submit" class="w-full bg-ink text-paper rounded-xl px-6 py-3.5 font-display font-semibold hover:bg-teal transition-colors flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-lg">check</span>
+                Kargoyu Oluştur
+            </button>
+        </form>
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        function updateDesi() {
+            const w = parseFloat(document.getElementById('width').value) || 0;
+            const l = parseFloat(document.getElementById('length').value) || 0;
+            const h = parseFloat(document.getElementById('height').value) || 0;
+            document.getElementById('desiResult').textContent = ((w * l * h) / 3000).toFixed(1);
+        }
+        ['width', 'length', 'height'].forEach(id =>
+            document.getElementById(id).addEventListener('input', updateDesi));
+    </script>
+}

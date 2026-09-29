@@ -1,0 +1,101 @@
+﻿@model CargoTrack.Dto.Dtos.CargoDtos.UpdateCargoDto
+@using CargoTrack.Entity.Entities.Enums
+@{
+    ViewData["Title"] = "Kargo Düzenle";
+    Layout = "_AdminLayout";
+}
+
+<a href="@Url.Action("Index")" class="pop inline-flex items-center gap-1.5 text-sm font-semibold text-on-surface-variant hover:text-primary-container mb-6 transition-colors">
+    <span class="material-symbols-outlined text-base">arrow_back</span>
+    Kargo listesine dön
+</a>
+
+<div class="grid lg:grid-cols-3 gap-6">
+    <div class="lg:col-span-2">
+        <div class="pop bg-white rounded-2xl border border-outline-variant p-7" style="animation-delay:.03s">
+            <div class="flex items-center gap-3 mb-1">
+                <div class="w-10 h-10 rounded-xl bg-primary-container/10 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-primary-container">edit_document</span>
+                </div>
+                <h2 class="font-extrabold text-lg text-on-background">Kargo Bilgilerini Düzenle</h2>
+            </div>
+            <p class="text-sm text-on-surface-variant mb-7 ml-[52px]">
+                Sadece fiziksel özellikler ve gönderi tipi burada güncellenir; durum değişikliği ayrı bir işlemdir.
+            </p>
+
+            <form asp-action="Update" method="post" class="space-y-5">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="Id" />
+                <div asp-validation-summary="All" class="text-error text-sm font-medium"></div>
+
+                <div class="grid grid-cols-3 gap-4">
+                    <div>
+                        <label class="block text-sm font-bold text-on-background mb-1.5">En (cm)</label>
+                        <input asp-for="Width" type="number" step="0.1"
+                               class="field-input" />
+                        <span asp-validation-for="Width" class="text-error text-xs"></span>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-on-background mb-1.5">Boy (cm)</label>
+                        <input asp-for="Length" type="number" step="0.1"
+                               class="field-input" />
+                        <span asp-validation-for="Length" class="text-error text-xs"></span>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-bold text-on-background mb-1.5">Yükseklik (cm)</label>
+                        <input asp-for="Height" type="number" step="0.1"
+                               class="field-input" />
+                        <span asp-validation-for="Height" class="text-error text-xs"></span>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-on-background mb-1.5">Ağırlık (kg)</label>
+                    <input asp-for="Weight" type="number" step="0.1" class="field-input" />
+                    <span asp-validation-for="Weight" class="text-error text-xs"></span>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-bold text-on-background mb-1.5">Gönderi Tipi</label>
+                    <select asp-for="CargoType" asp-items="Html.GetEnumSelectList<CargoType>()" class="field-input"></select>
+                </div>
+
+                <div class="flex gap-3 pt-3">
+                    <button type="submit" class="flex items-center gap-2 bg-primary-container text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-primary-container-light transition-colors">
+                        <span class="material-symbols-outlined text-lg">save</span>
+                        Kaydet
+                    </button>
+                    <a href="@Url.Action("Index")" class="px-6 py-3 rounded-xl font-bold text-sm text-on-surface-variant hover:bg-surface-container-low transition-colors">
+                        Vazgeç
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="pop bg-secondary-container/10 rounded-2xl p-6 h-fit" style="animation-delay:.08s">
+        <div class="flex items-center gap-2 mb-2">
+            <span class="material-symbols-outlined text-secondary">deployed_code</span>
+            <p class="font-bold text-sm text-on-background">Desi hatırlatması</p>
+        </div>
+        <p class="text-xs text-on-surface-variant leading-relaxed">
+            Desi = En × Boy × Yükseklik / 3000. Ölçüleri değiştirirsen fiyatlandırma bir sonraki hesaplamada otomatik güncellenir.
+        </p>
+    </div>
+</div>
+
+@section Styles {
+    <style>
+        .pop { animation: pop .4s cubic-bezier(.2,.8,.2,1) both; }
+        @@keyframes pop { from { opacity: 0; transform: translateY(8px); } }
+        .field-input {
+            width: 100%; border: 1.5px solid #dfe3ee; border-radius: 0.75rem;
+            padding: 0.7rem 1rem; font-size: 0.9375rem; transition: border-color .15s, box-shadow .15s;
+        }
+        .field-input:focus { outline: none; border-color: #001e3c; box-shadow: 0 0 0 3px rgba(0,30,60,.08); }
+    </style>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
